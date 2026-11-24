@@ -95,8 +95,8 @@
   const PLAYER = { id: 'player', hair: 'short', H: '#4a2f1d', S: '#e8b48a', T: '#14285c', C: '#d71f30', P: '#0f1f4a', B: '#f2f2f2' };
 
   const ARTS = {};
-  STAFF.forEach((s) => { ARTS[s.id] = window.ART.portrait(s.art); });
-  const face = (id) => ARTS[id].replace('viewBox="0 0 400 520"', 'viewBox="78 56 244 244"');
+  STAFF.forEach((s) => { ARTS[s.id] = window.ART.portrait(s.id); });
+  const face = (id) => window.ART.portrait(id, { face: true });
 
   /* ---------------- HUD ---------------- */
   function updateHud() {
@@ -194,6 +194,17 @@
     convo.lines = lines; convo.i = 0;
     showLine();
   }
+  /* Coup d'éclat : pose qui pointe, lignes de vitesse et tremblement */
+  let cheerT = null;
+  function cheer(lines) {
+    const c = $('#convoChar');
+    c.classList.remove('dramatic');
+    void c.offsetWidth;
+    c.classList.add('dramatic');
+    clearTimeout(cheerT);
+    cheerT = setTimeout(() => c.classList.remove('dramatic'), 1800);
+    speak(lines);
+  }
   function showLine() {
     const c = $('#convoChar');
     $('#speechNext').hidden = convo.i >= convo.lines.length - 1;
@@ -283,7 +294,7 @@
       updateHud();
       refreshWorld();
       showAdvice();
-      speak([`C'est noté pour ${state.profile.club || 'le club'} ! Tout le staff a reçu la fiche.`, 'Va voir Bernard pour la tactique, ou Sami pour le mercato.']);
+      cheer([`C'est noté pour ${state.profile.club || 'le club'} ! Tout le staff a reçu la fiche.`, 'Va voir Bernard pour la tactique, ou Sami pour le mercato.']);
     });
   }
 
@@ -540,7 +551,7 @@
     $$('[data-add]', el).forEach((b) => b.addEventListener('click', () => {
       const p = PROFILS_COMMUNAUTE[+b.dataset.add];
       const ok = addToShortlist({ nom: p.n, poste: p.pos, age: p.age || '', valeur: '', note: `${p.club} · ${p.prix}` });
-      speak([ok ? `${p.n} est dans ta liste. Je lance un rapport complet dès que tu me le demandes dans le jeu.` : `${p.n} est déjà dans ta liste.`]);
+      (ok ? cheer : speak)([ok ? `${p.n} est dans ta liste. Je lance un rapport complet dès que tu me le demandes dans le jeu.` : `${p.n} est déjà dans ta liste.`]);
     }));
   }
 
@@ -657,11 +668,11 @@
         if (i >= 0) state.cards[i] = copy; else state.cards.unshift(copy);
         store.set('cards', state.cards);
         renderFicheJoueur(el);
-        speak([`Fiche de ${copy.nom} enregistrée. Tu la retrouves en bas de l'onglet.`]);
+        cheer([`Fiche de ${copy.nom} enregistrée. Tu la retrouves en bas de l'onglet.`]);
       });
       $('#fjList').addEventListener('click', () => {
         const ok = addToShortlist({ nom: fj.nom, poste: s.st.label, age: fj.age, valeur: fj.valeur, note: fj.club });
-        speak([ok ? `${fj.nom} est dans ta liste de cibles.` : `${fj.nom} est déjà dans ta liste.`]);
+        (ok ? cheer : speak)([ok ? `${fj.nom} est dans ta liste de cibles.` : `${fj.nom} est déjà dans ta liste.`]);
       });
     };
 
@@ -938,7 +949,7 @@
       $$('[data-ck]', el).forEach((b) => b.addEventListener('change', () => {
         state.checklist[b.dataset.ck] = b.checked;
         store.set('checklist', state.checklist);
-        if (b.checked) speak([pick(['Bien joué, petit ! Une étape de plus.', 'Tu apprends vite. Continue comme ça.', 'Parfait. Passe à la suivante quand tu es prêt.'])]);
+        if (b.checked) cheer([pick(['Bien joué, petit ! Une étape de plus.', 'Tu apprends vite. Continue comme ça.', 'Parfait. Passe à la suivante quand tu es prêt.'])]);
         renderGuide(el, tab);
         updateHud();
       }));
