@@ -1,26 +1,19 @@
-/* Staff de Poche — moteur : salle, déplacements, dialogues et modules du staff. */
+/* Staff de Poche FM27 — interface : HUD, conversations, outils du staff. */
 (function () {
   'use strict';
 
-  /* ---------------- Stockage local (navigateur uniquement) ---------------- */
+  /* ---------------- Outils ---------------- */
   const PREFIX = 'staffdepoche.';
   const store = {
     get(key, fallback) {
-      try {
-        const raw = localStorage.getItem(PREFIX + key);
-        return raw == null ? fallback : JSON.parse(raw);
-      } catch (e) { return fallback; }
+      try { const raw = localStorage.getItem(PREFIX + key); return raw == null ? fallback : JSON.parse(raw); } catch (e) { return fallback; }
     },
-    set(key, value) {
-      try { localStorage.setItem(PREFIX + key, JSON.stringify(value)); } catch (e) { /* stockage indisponible */ }
-    },
+    set(key, value) { try { localStorage.setItem(PREFIX + key, JSON.stringify(value)); } catch (e) { /* stockage indisponible */ } },
   };
-
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const $ = (sel, root) => (root || document).querySelector(sel);
   const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
   const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
-
   function money(n) {
     if (!isFinite(n)) return '—';
     const a = Math.abs(n);
@@ -31,436 +24,213 @@
   const num = (v) => { const n = parseFloat(String(v).replace(/\s/g, '').replace(',', '.')); return isFinite(n) ? n : 0; };
 
   /* ---------------- État ---------------- */
+  const DEFAULT_PROFILE = { club: 'Olympique Lyonnais', ligue: 'Ligue 1', saison: '2026/27', statut: 'haut', style: 'equilibre', objectif: '', budget: '', salaire: '' };
+  const saved = store.get('profile', null);
   const state = {
-    profile: store.get('profile', null),
+    profile: saved && saved.club ? saved : { ...DEFAULT_PROFILE },
+    profileSaved: !!(saved && saved.club),
     checklist: store.get('checklist', {}),
     notes: store.get('notes', []),
     shortlist: store.get('shortlist', null),
-    tabs: {},
+    tabs: store.get('tabs', {}),
     tactic: { statut: null, style: null, force: null, mode: 'ip', sel: -1, systeme: 'equilibre' },
     recrut: { poste: 'bu', style: null },
-    calc: { fee: '4000000', wage: '25000', years: '4', age: '24', bonus: '300000' },
+    calc: { fee: '12000000', wage: '60000', years: '4', age: '23', bonus: '800000' },
     plan: 'saison',
-    talk: { ctx: 'avant', sit: 'egal' },
+    talk: { ctx: 'avant', sit: 'favori' },
     gloss: '',
   };
-
   const EXEMPLES_SHORTLIST = [
-    { id: 'ex1', nom: 'Lucas Moreau', poste: 'Ailier', age: 21, valeur: 3500000, status: 1, ex: true },
+    { id: 'ex1', nom: 'Lucas Moreau', poste: 'Ailier', age: 21, valeur: 9000000, status: 1, ex: true },
     { id: 'ex2', nom: 'Diego Ferreira', poste: 'Défenseur central', age: 29, valeur: 0, status: 0, note: 'Fin de contrat en juin', ex: true },
   ];
 
   /* ---------------- Le staff ---------------- */
   const STAFF = [
     {
-      id: 'club', name: 'Margaux', role: 'Secrétaire générale', topic: 'Fiche du club et carnet de saison',
-      x: 7, y: 2, dir: 'down', color: '#f6c9c2',
-      look: { hair: 'long', hairColor: '#b4502e', skin: '#f1c7a1', top: '#e8eef8', pants: '#3d4a7a' },
-      lines: () => state.profile && state.profile.club
-        ? [`Bonjour coach ! Tout est à jour pour ${state.profile.club}.`, 'Modifie la fiche si ta situation change : le staff adapte ses conseils. Et note tout dans ton carnet !']
-        : ['Bienvenue, coach ! Je suis Margaux, je tiens le registre du club.', "Remplis la fiche du club : budget, objectif, style. Tout le staff s'en servira pour te conseiller."],
+      id: 'club', name: 'Margaux', role: 'Secrétaire générale', topic: 'Fiche du club et carnet de saison', x: 10, y: 3, dir: 'down', glow: 'rgba(215,31,48,.55)',
+      sprite: { id: 'margaux', hair: 'long', H: '#a8442a', S: '#f3cfb0', T: '#14285c', C: '#ffffff', P: '#1d2a55' },
+      art: { skin: '#f3cfb0', hair: '#a8442a', hairStyle: 'long', eyes: '#3f7a4a', outfit: 'blazer', top: '#14285c', shirt: '#ffffff', acc: ['lanyard'], lashes: true, jaw: 'soft' },
+      lines: () => !state.profile.budget
+        ? [`Bienvenue à l'${state.profile.club}, coach ! Je suis Margaux, je tiens le registre du club.`, "J'ai déjà noté le club et le championnat. Il me manque ton budget transferts et ta marge salariale : tu les trouves dans l'écran Finances du jeu.", "J'ai mis « Haut de tableau » comme statut. Vérifie l'objectif fixé par le conseil d'administration et corrige-moi si besoin."]
+        : [`Tout est à jour pour l'${state.profile.club}, coach.`, 'Modifie la fiche si ta situation change : le staff adapte ses conseils. Et note tes idées dans le carnet de saison !'],
     },
     {
-      id: 'tactique', name: 'Bernard', role: 'Entraîneur adjoint', topic: 'Tactiques et systèmes de jeu',
-      x: 2, y: 3, dir: 'down', color: '#bfe3c9',
-      look: { hair: 'short', hairColor: '#a8a8a8', skin: '#d9a27a', top: '#2f6f4a', pants: '#2a2f3a', beard: true },
-      lines: () => ['Alors coach, on joue comment ?', "Réponds à mes trois questions et je te propose un système, avec un plan B. Depuis FM26, chaque tactique a deux formes : avec et sans ballon."],
+      id: 'tactique', name: 'Bernard', role: 'Entraîneur adjoint', topic: 'Tactiques et systèmes de jeu', x: 2, y: 4, dir: 'down', glow: 'rgba(42,85,176,.6)',
+      sprite: { id: 'bernard', hair: 'short', H: '#b9bcc6', S: '#d9a27a', T: '#1b3f8f', C: '#ffffff', P: '#14285c', beard: true, F: '#c9ccd4' },
+      art: { skin: '#d9a27a', hair: '#b9bcc6', hairStyle: 'short', eyes: '#4a3424', outfit: 'tracksuit', top: '#1b3f8f', beard: 'full', beardColor: '#c9ccd4', stern: true, age: 'old', brows: '#9ea2ae' },
+      lines: () => ['Alors coach, on joue comment ?', "Réponds à mes trois questions et je te propose un système, avec un plan B. Depuis FM26, chaque tactique a deux formes : avec le ballon et sans le ballon."],
     },
     {
-      id: 'transferts', name: 'Sami', role: 'Recruteur en chef', topic: 'Transferts et recrutement',
-      x: 13, y: 3, dir: 'down', color: '#f3dfb8',
-      look: { hair: 'short', hairColor: '#2a2320', skin: '#8d5a3b', top: '#c79a5b', pants: '#3b3b4b', glasses: true },
-      lines: () => ["J'ai des yeux dans tous les championnats, coach.", 'Dis-moi quel poste tu veux renforcer : je te dis quels attributs regarder et si le joueur rentre dans ton budget.'],
+      id: 'transferts', name: 'Sami', role: 'Recruteur en chef', topic: 'Transferts et recrutement', x: 17, y: 3, dir: 'down', glow: 'rgba(242,182,50,.45)',
+      sprite: { id: 'sami', hair: 'short', H: '#1f1a1a', S: '#8d5a3b', T: '#14285c', C: '#d71f30', P: '#3b3b4b', glasses: true },
+      art: { skin: '#8d5a3b', hair: '#1f1a1a', hairStyle: 'fade', eyes: '#2a1a10', outfit: 'quarterzip', top: '#14285c', glasses: true, beard: 'stubble', beardColor: '#1f1a1a' },
+      lines: () => ["J'ai des yeux dans tous les championnats, coach.", 'Dis-moi quel poste tu veux renforcer : je te dis quels attributs regarder, et si le joueur rentre dans ton budget.'],
     },
     {
-      id: 'entrainement', name: 'Inès', role: 'Préparatrice physique', topic: 'Entraînement et jeunes',
-      x: 2, y: 7, dir: 'right', color: '#ffd5bd',
-      look: { hair: 'long', hairColor: '#3a2418', skin: '#c68a5e', top: '#e8743b', pants: '#2d3a63' },
-      lines: () => ['Un joueur fatigué, c’est un joueur blessé !', 'Choisis la période de la saison, je te donne le planning de la semaine.'],
+      id: 'entrainement', name: 'Inès', role: 'Préparatrice physique', topic: 'Entraînement et jeunes', x: 3, y: 9, dir: 'right', glow: 'rgba(215,31,48,.5)',
+      sprite: { id: 'ines', hair: 'ponytail', H: '#3a2418', S: '#c68a5e', T: '#d71f30', C: '#ffffff', P: '#14285c' },
+      art: { skin: '#c68a5e', hair: '#3a2418', hairStyle: 'ponytail', eyes: '#3a2418', outfit: 'sport', top: '#d71f30', acc: ['whistle'], lashes: true, jaw: 'soft' },
+      lines: () => ['Un joueur fatigué, c’est un joueur blessé !', 'Choisis la période de la saison et je te donne le planning de la semaine. Je m’occupe aussi des jeunes.'],
     },
     {
-      id: 'match', name: 'Théo', role: 'Analyste vidéo', topic: 'Matchs et causeries',
-      x: 13, y: 8, dir: 'down', color: '#ddd0f3',
-      look: { hair: 'short', hairColor: '#e0b84a', skin: '#f3d2b3', top: '#6b4fa0', pants: '#2a2f3a', glasses: true },
+      id: 'match', name: 'Théo', role: 'Analyste vidéo', topic: 'Matchs et causeries', x: 18, y: 9, dir: 'down', glow: 'rgba(120,170,255,.5)',
+      sprite: { id: 'theo', hair: 'short', H: '#e3b94e', S: '#f3d2b3', T: '#eef2fa', C: '#1b3f8f', P: '#2a2f3a', glasses: true },
+      art: { skin: '#f3d2b3', hair: '#e3b94e', hairStyle: 'messy', eyes: '#2f6fb0', outfit: 'hoodie', top: '#f4f6fb', glasses: true, glassesColor: '#1b3f8f', acc: ['headphones'], jaw: 'soft' },
       lines: () => ["J'ai regardé les vidéos de l'adversaire. Trois fois.", 'Avant le match, pendant le match, dans le vestiaire : je te dis quoi faire.'],
     },
     {
-      id: 'guide', name: 'Jacques', role: 'Ancien coach, ton mentor', topic: 'Guide FM27 pour débutant',
-      x: 4, y: 10, dir: 'up', color: '#cfe0f5',
-      look: { hair: 'cap', cap: '#23396b', brim: '#152447', hairColor: '#cfcfcf', skin: '#f1c7a1', top: '#7a5638', pants: '#b9a77f', beard: true },
+      id: 'guide', name: 'Jacques', role: 'Ancien coach, ton mentor', topic: 'Guide FM27 pour débutant', x: 8, y: 10, dir: 'down', glow: 'rgba(242,182,50,.45)',
+      sprite: { id: 'jacques', hair: 'cap', H: '#9aa0ad', S: '#f1c7a1', T: '#c9b48a', C: '#d71f30', P: '#5a4a3a', beard: true, F: '#ececec', Q: '#14285c', K: '#0f1f4a' },
+      art: { skin: '#f1c7a1', hair: '#d6d6d6', hairStyle: 'cap', cap: '#14285c', eyes: '#4a6a8a', outfit: 'cardigan', top: '#c9b48a', shirt: '#cfe0f5', beard: 'full', beardColor: '#eeeeee', age: 'old', acc: ['scarf'], brows: '#d6d6d6' },
       lines: () => {
         const done = Object.values(state.checklist).filter(Boolean).length;
         return done === 0
-          ? ['Ah, un nouveau coach ! Ça me rappelle mes débuts...', "FM27 fait peur au début. Suis ma liste des premiers pas, une étape à la fois. Je t'explique aussi l'interface et le vocabulaire."]
-          : [`Déjà ${done} étape${done > 1 ? 's' : ''} sur ${CHECKLIST.length} de faite${done > 1 ? 's' : ''}. Bien, petit !`, 'Continue ma liste. Et si un mot te bloque, regarde le glossaire.'];
+          ? ['Ah, un nouveau coach ! Ça me rappelle mes débuts sur le banc...', "FM27 fait peur au début. Suis ma liste des premiers pas, une étape à la fois. Je t'explique aussi l'interface du jeu et le vocabulaire."]
+          : [`Déjà ${done} étape${done > 1 ? 's' : ''} sur ${CHECKLIST.length}. Bien, petit !`, 'Continue ma liste. Et si un mot te bloque, regarde le glossaire.'];
       },
     },
   ];
   const staffById = Object.fromEntries(STAFF.map((s) => [s.id, s]));
-  const PLAYER_LOOK = { hair: 'short', hairColor: '#5a3a24', skin: '#e8b48a', top: '#2b3d78', pants: '#20263d', shoes: '#f2f2f2' };
+  const PLAYER = { id: 'player', hair: 'short', H: '#4a2f1d', S: '#e8b48a', T: '#14285c', C: '#d71f30', P: '#0f1f4a', B: '#f2f2f2' };
 
-  /* ---------------- La salle ---------------- */
-  const COLS = 16, ROWS = 12;
-  const room = $('#room');
-  const blocked = new Map(); // "x,y" -> objet interactif
-  const OBJECTS = [
-    { cls: 'wall', x: 0, y: 0, w: 16, h: 2 },
-    { cls: 'board', x: 1, y: 0.35, w: 3, h: 1.4, html: '<i class="r" style="left:22%;top:30%"></i><i class="r" style="left:30%;top:62%"></i><i class="b" style="left:64%;top:26%"></i><i class="b" style="left:72%;top:58%"></i>', msg: 'Le tableau tactique. Bernard y a dessiné 47 flèches. Tu en comprends 3.' },
-    { cls: 'cabinet', x: 6, y: 0.35, w: 4, h: 1.45, html: '__TROPHY__', msg: 'La vitrine à trophées. Il reste de la place. Beaucoup de place.' },
-    { cls: 'map', x: 12, y: 0.35, w: 3, h: 1.4, msg: 'La carte du réseau de recrutement. Des punaises partout : Sami ne dort jamais.' },
-    { cls: 'shelf', x: 0, y: 2, w: 1, h: 1, html: '<span></span><span></span><span></span>', block: true, msg: 'Des classeurs : « Règlement du championnat », « Fair-play financier »... Jacques les connaît par cœur.' },
-    { cls: 'plant', x: 4, y: 2, w: 1, h: 1, img: 'plant', block: true, msg: 'Une plante verte. Elle est en meilleure forme que ton arrière gauche.' },
-    { cls: 'plant', x: 11, y: 2, w: 1, h: 1, img: 'plant', block: true, msg: 'Une autre plante. Margaux l’arrose avant chaque match, par superstition.' },
-    { cls: 'counter', x: 5, y: 3, w: 6, h: 1, html: '<div class="top"><div class="paper"></div></div><div class="front"></div>', block: true, talk: 'club' },
-    { cls: 'desk', x: 12, y: 2, w: 3, h: 1, html: '<div class="monitor m1"></div><div class="monitor m2"></div>', block: true, msg: 'Les écrans de Sami : des rapports de recrutement à perte de vue.' },
-    { cls: 'center-circle', x: 6, y: 5, w: 4, h: 4 },
-    { cls: 'center-spot', x: 7.85, y: 6.85, w: 0.3, h: 0.3 },
-    { cls: 'turf', x: 1, y: 6, w: 4, h: 3 },
-    { cls: 'cone', x: 1, y: 6, w: 1, h: 1, img: 'cone', block: true, msg: "Un plot d'entraînement. Il défend mieux que certains de tes joueurs." },
-    { cls: 'cone', x: 4, y: 8, w: 1, h: 1, img: 'cone', block: true, msg: 'Un autre plot. Inès les place au centimètre près.' },
-    { cls: 'ball', x: 4, y: 6, w: 1, h: 1, img: 'ball', block: true, msg: 'Tu tentes un jongle... 3 jongles. Pas mal pour un coach !' },
-    { cls: 'stand', x: 12, y: 6, w: 3, h: 2, html: '<div class="screen-big"></div><div class="base"></div>', block: true, msg: "Théo repasse le dernier match de l'adversaire. En boucle." },
-    { cls: 'bench', x: 9, y: 10, w: 1, h: 1, block: true, msg: 'Un banc. Assieds-toi un instant... Non, le mercato n’attend pas !' },
-    { cls: 'bench y', x: 10, y: 10, w: 1, h: 1, block: true, msg: 'Le banc des remplaçants. Personne ne veut s’y asseoir.' },
-    { cls: 'mat', x: 7, y: 11, w: 2, h: 1, exit: true },
-  ];
-  const IMGS = {};
+  const ARTS = {};
+  STAFF.forEach((s) => { ARTS[s.id] = window.ART.portrait(s.art); });
+  const face = (id) => ARTS[id].replace('viewBox="0 0 400 520"', 'viewBox="78 56 244 244"');
 
-  const player = { x: 8, y: 9, dir: 'up', el: null, img: null, moving: false };
-  const npcEls = {};
-
-  function tileFree(x, y) {
-    if (x < 0 || y < 2 || x >= COLS || y >= ROWS) return false;
-    if (blocked.has(x + ',' + y)) return false;
-    return !STAFF.some((s) => s.x === x && s.y === y);
-  }
-
-  function buildRoom() {
-    IMGS.plant = pixelURL(PLANT, { G: '#3f9a4f', L: '#7fcf6d', O: '#3a2a24', P: '#c0673c' });
-    IMGS.cone = pixelURL(CONE, { O: '#7a2c12', A: '#f07a2a', W: '#fff4e6' });
-    IMGS.ball = pixelURL(BALL, { O: '#23202e', W: '#ffffff', K: '#23202e' });
-    IMGS.trophy = pixelURL(TROPHY, { O: '#6b4a12', Y: '#f4c14a', B: '#5a3b26' });
-
-    const frag = document.createDocumentFragment();
-    OBJECTS.forEach((o) => {
-      const d = document.createElement('div');
-      d.className = 'obj ' + o.cls;
-      d.style.cssText = `--x:${o.x};--y:${o.y};--w:${o.w};--h:${o.h}`;
-      if (o.img) d.innerHTML = `<img class="pix" alt="" src="${IMGS[o.img]}">`;
-      else if (o.html === '__TROPHY__') d.innerHTML = [1, 2, 3].map(() => `<img alt="" src="${IMGS.trophy}" class="pix" style="width:26%;height:auto">`).join('');
-      else if (o.html) d.innerHTML = o.html;
-      if (o.msg || o.talk) d.addEventListener('click', () => (o.talk ? talkTo(staffById[o.talk]) : toast(o.msg)));
-      if (o.block) {
-        for (let x = Math.floor(o.x); x < o.x + o.w; x++) for (let y = Math.floor(o.y); y < o.y + o.h; y++) blocked.set(x + ',' + y, o);
-      }
-      // Les objets muraux restent cliquables mais ne bloquent pas le sol.
-      frag.appendChild(d);
-    });
-    // Derrière le comptoir : zone réservée
-    for (let x = 5; x <= 10; x++) if (x !== 7) blocked.set(x + ',2', { msg: 'C’est le bureau de Margaux. On ne passe pas derrière le comptoir !' });
-
-    STAFF.forEach((s) => {
-      const d = document.createElement('div');
-      d.className = 'spr npc';
-      d.setAttribute('role', 'button');
-      d.setAttribute('tabindex', '-1');
-      d.setAttribute('aria-label', `${s.name}, ${s.role}`);
-      d.style.cssText = `--x:${s.x};--y:${s.y}`;
-      d.innerHTML = `<img class="pix" alt="" src="${spriteURL(s.look, s.dir)}">`;
-      d.addEventListener('click', () => talkTo(s));
-      npcEls[s.id] = d;
-      frag.appendChild(d);
-    });
-
-    player.el = document.createElement('div');
-    player.el.className = 'spr player';
-    player.el.innerHTML = `<img class="pix" alt="Toi, le coach" src="${spriteURL(PLAYER_LOOK, player.dir)}">`;
-    player.img = player.el.firstChild;
-    frag.appendChild(player.el);
-    room.appendChild(frag);
-    placePlayer();
-  }
-
-  function placePlayer() {
-    player.el.style.setProperty('--x', player.x);
-    player.el.style.setProperty('--y', player.y);
-    player.img.src = spriteURL(PLAYER_LOOK, player.dir);
-    player.el.style.zIndex = 10 + player.y;
-    STAFF.forEach((s) => { npcEls[s.id].style.zIndex = 10 + s.y; });
-    updateBubbles();
-  }
-
-  const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
-
-  function facingTarget() {
-    const [dx, dy] = DIRS[player.dir];
-    const tx = player.x + dx, ty = player.y + dy;
-    const npc = STAFF.find((s) => s.x === tx && s.y === ty);
-    if (npc) return { npc };
-    const o = blocked.get(tx + ',' + ty);
-    if (o && o.talk) return { npc: staffById[o.talk] };
-    if (o && o.msg) return { obj: o };
-    if (ty < 2 && ty >= 0) {
-      const wallObj = OBJECTS.find((w) => w.msg && !w.block && tx >= w.x && tx < w.x + w.w && w.y < 2);
-      if (wallObj) return { obj: wallObj };
-    }
-    return null;
-  }
-
-  function updateBubbles() {
-    $$('.bubble', room).forEach((b) => b.remove());
-    const t = facingTarget();
-    if (t && t.npc) addBubble(npcEls[t.npc.id], 'A');
-    if (!state.profile && !(t && t.npc && t.npc.id === 'club')) addBubble(npcEls.club, '!');
-  }
-  function addBubble(el, txt) {
-    const b = document.createElement('span');
-    b.className = 'bubble';
-    b.textContent = txt;
-    el.appendChild(b);
-  }
-
-  let lastMove = 0;
-  function move(dir) {
-    const now = performance.now();
-    if (now - lastMove < 140) return;
-    lastMove = now;
-    hideToast();
-    player.dir = dir;
-    const [dx, dy] = DIRS[dir];
-    const nx = player.x + dx, ny = player.y + dy;
-    if (tileFree(nx, ny)) {
-      player.x = nx; player.y = ny;
-      player.el.classList.add('walk');
-      clearTimeout(player.walkT);
-      player.walkT = setTimeout(() => player.el.classList.remove('walk'), 170);
-      const exit = OBJECTS.find((o) => o.exit && nx >= o.x && nx < o.x + o.w && ny >= o.y && ny < o.y + o.h);
-      if (exit) toast('La sortie vers le terrain. Reviens quand tu veux, coach !');
-    }
-    placePlayer();
-  }
-
-  function pressA() {
-    const t = facingTarget();
-    if (t && t.npc) return talkTo(t.npc);
-    if (t && t.obj) return toast(t.obj.msg);
-    // Sinon, faire avancer le dialogue de l'écran du bas
-    const line = $('.talk', bottom);
-    if (line) line.click();
-  }
-  function pressB() {
-    hideToast();
-    if (currentRoute() !== 'accueil') go('accueil');
-  }
-
-  function faceToward(s) {
-    const dx = player.x - s.x, dy = player.y - s.y;
-    if (Math.abs(dx) + Math.abs(dy) > 2) return;
-    s.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
-    $('img', npcEls[s.id]).src = spriteURL(s.look, s.dir);
-  }
-
-  function talkTo(s) {
-    faceToward(s);
-    if (currentRoute() === s.id) { renderRoute(true); }
-    else go(s.id);
-    const r = bottom.getBoundingClientRect();
-    if (r.top > window.innerHeight * 0.7) bottom.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-
-  /* Les PNJ se tournent de temps en temps */
-  setInterval(() => {
-    const s = pick(STAFF);
-    if (Math.abs(player.x - s.x) + Math.abs(player.y - s.y) <= 1) return;
-    if (s.id === 'club') return;
-    s.dir = pick(['down', 'down', 'left', 'right', 'up']);
-    $('img', npcEls[s.id]).src = spriteURL(s.look, s.dir);
-  }, 2600);
-
-  /* Petit message dans l'écran du haut */
-  const toastEl = $('#toast');
-  let toastT;
-  function toast(msg) {
-    toastEl.innerHTML = `<div class="textbox">${esc(msg)}</div>`;
-    toastEl.hidden = false;
-    clearTimeout(toastT);
-    toastT = setTimeout(hideToast, 3400);
-  }
-  function hideToast() { toastEl.hidden = true; }
-
-  /* ---------------- Commandes ---------------- */
-  const KEYMAP = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
-  const inField = (el) => el && /^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName);
-  document.addEventListener('keydown', (e) => {
-    if (inField(document.activeElement) || e.altKey || e.ctrlKey || e.metaKey) return;
-    if (KEYMAP[e.key]) { e.preventDefault(); move(KEYMAP[e.key]); return; }
-    const onButton = document.activeElement && /^(BUTTON|A|SUMMARY)$/.test(document.activeElement.tagName);
-    if ((e.key === 'Enter' || e.key === ' ') && !onButton) { e.preventDefault(); pressA(); }
-    else if (e.key === 'a' || e.key === 'A') { pressA(); }
-    else if (e.key === 'Escape' || e.key === 'b' || e.key === 'B') { pressB(); }
-  });
-
-  let holdT = null;
-  $$('.dp[data-dir]').forEach((b) => {
-    const start = (e) => {
-      e.preventDefault();
-      const dir = b.dataset.dir;
-      b.classList.add('on');
-      lastMove = 0;
-      move(dir);
-      clearInterval(holdT);
-      holdT = setInterval(() => move(dir), 160);
-    };
-    const stop = () => { b.classList.remove('on'); clearInterval(holdT); };
-    b.addEventListener('pointerdown', start);
-    b.addEventListener('pointerup', stop);
-    b.addEventListener('pointerleave', stop);
-    b.addEventListener('pointercancel', stop);
-    b.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); lastMove = 0; move(b.dataset.dir); } });
-  });
-  $('#btnA').addEventListener('click', pressA);
-  $('#btnB').addEventListener('click', pressB);
-
-  /* ---------------- Écran du bas : routes ---------------- */
-  const bottom = $('#bottom');
-  const ROUTES = ['accueil', 'club', 'tactique', 'transferts', 'entrainement', 'match', 'guide'];
-  function currentRoute() {
-    const h = location.hash.replace('#', '');
-    return ROUTES.includes(h) ? h : 'accueil';
-  }
-  function go(route) {
-    if (location.hash.replace('#', '') === route) renderRoute(true);
-    else location.hash = route;
-  }
-  window.addEventListener('hashchange', () => renderRoute(true));
-
-  function portraitStyle(s) {
-    return `background-image:url(${spriteURL(s.look, 'down')});--c:${s.color}`;
-  }
-
-  /* Boîte de dialogue avec effet machine à écrire */
-  function talkBox(s, lines) {
-    return `<div class="textbox talk" role="button" tabindex="0" aria-label="Dialogue : touche pour continuer" data-lines='${esc(JSON.stringify(lines))}' data-i="0">
-      <div class="portrait" style="${portraitStyle(s)}"></div>
-      <div><p class="who">${esc(s.name.toUpperCase())} <span>· ${esc(s.role)}</span></p><p class="line"></p></div>
-      <span class="more" aria-hidden="true" hidden>▼</span>
-    </div>`;
-  }
-
-  let typeT = null;
-  function bindTalk(animate) {
-    const box = $('.talk', bottom);
-    if (!box) return;
-    const lines = JSON.parse(box.dataset.lines);
-    const lineEl = $('.line', box);
-    const more = $('.more', box);
-    let i = 0, typing = false;
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    function show(idx, anim) {
-      clearInterval(typeT);
-      const txt = lines[idx];
-      more.hidden = idx >= lines.length - 1;
-      if (!anim || reduce) { lineEl.textContent = txt; typing = false; return; }
-      let n = 0; typing = true; lineEl.textContent = '';
-      typeT = setInterval(() => {
-        n += 2;
-        lineEl.textContent = txt.slice(0, n);
-        if (n >= txt.length) { clearInterval(typeT); typing = false; }
-      }, 22);
-    }
-    function next() {
-      if (typing) { clearInterval(typeT); lineEl.textContent = lines[i]; typing = false; return; }
-      if (i < lines.length - 1) { i++; show(i, true); }
-    }
-    box.addEventListener('click', next);
-    box.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); next(); } });
-    show(0, animate);
-  }
-
+  /* ---------------- HUD ---------------- */
   function updateHud() {
-    const p = state.profile || {};
-    const done = Object.values(state.checklist).filter(Boolean).length;
-    $('#hud').textContent = `${p.club || 'Club sans nom'}${p.saison ? ' · ' + p.saison : ''} · ★ ${done}/${CHECKLIST.length}`;
-  }
-
-  function renderRoute(animate) {
-    const r = currentRoute();
-    if (r === 'accueil') renderHome(animate);
-    else renderModule(r, animate);
-    updateHud();
-    updateBubbles();
-  }
-
-  /* ---------------- Accueil ---------------- */
-  function renderHome(animate) {
     const p = state.profile;
-    const narrator = p
-      ? { name: 'Margaux', role: 'Secrétaire générale', look: staffById.club.look, color: staffById.club.color }
-      : staffById.club;
-    const lines = p && p.club
-      ? [`Bon retour au centre d'entraînement de ${p.club}, coach !`, 'Approche-toi de quelqu’un avec les flèches et appuie sur A. Ou choisis directement ci-dessous.']
-      : ["Bienvenue au centre d'entraînement, coach ! Je suis Margaux, à l'accueil.", "Commence par venir me voir au comptoir pour remplir la fiche du club. Ensuite, chaque membre du staff t'aidera sur son sujet.", 'Déplace-toi avec les flèches, parle avec A. Tu peux aussi toucher un personnage ou choisir dans la liste ci-dessous.'];
+    $('#hudName').textContent = p.club || 'Mon club';
+    $('#hudSub').textContent = [p.ligue, p.saison].filter(Boolean).join(' · ');
     const done = Object.values(state.checklist).filter(Boolean).length;
-    const pct = Math.round((done / CHECKLIST.length) * 100);
-    bottom.innerHTML = `
-      ${talkBox(narrator, lines)}
-      <div class="textbox">
-        <h2>Qui veux-tu voir ?</h2>
-        <div class="staff-list">
-          ${STAFF.map((s) => `<button type="button" class="staff-card" data-go="${s.id}">
-            <span class="portrait" style="${portraitStyle(s)}"></span>
-            <span><b>${esc(s.name)}</b><span>${esc(s.topic)}</span></span>
-          </button>`).join('')}
-        </div>
-      </div>
-      <div class="grid2">
-        <div class="textbox">
-          <h2>Tes premiers pas</h2>
-          <div class="xp"><span class="lbl">${done}/${CHECKLIST.length}</span><div class="meter" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct}%"></i></div></div>
-          <p class="muted" style="margin-top:10px">${done === CHECKLIST.length ? 'Tout est fait. Tu n’es plus un débutant !' : 'Prochaine étape : ' + esc(CHECKLIST.find((c, i) => !state.checklist[i]).t)}</p>
-          <button type="button" class="btn small alt" data-go="guide">Voir la liste</button>
-        </div>
-        <div class="textbox">
-          <h2>Astuce du jour</h2>
-          <p>${esc(pick(ASTUCES))}</p>
-        </div>
-      </div>
-      <p class="foot">Tes données restent dans ce navigateur, sur cet appareil.</p>`;
-    $$('[data-go]', bottom).forEach((b) => b.addEventListener('click', () => go(b.dataset.go)));
-    bindTalk(animate);
+    $('#hudProgressTxt').textContent = `${done}/${CHECKLIST.length}`;
+    $('#hudProgress').setAttribute('aria-label', `Premiers pas : ${done} sur ${CHECKLIST.length}`);
+  }
+  function refreshWorld() {
+    window.WORLD.setBubble('club', state.profile.budget ? null : '!');
+    window.WORLD.setBubble('guide', Object.values(state.checklist).some(Boolean) ? null : '!');
   }
 
-  /* ---------------- Modules ---------------- */
-  const MODULES = {
-    club: { tabs: [['fiche', 'Fiche du club'], ['carnet', 'Carnet de saison']], render: renderClub },
-    tactique: { tabs: [['assistant', 'Assistant'], ['systemes', 'Les systèmes'], ['diagnostic', 'Diagnostic'], ['regles', "Règles d'or"]], render: renderTactique },
-    transferts: { tabs: [['fiche', 'Fiche de poste'], ['calcul', 'Calculateur'], ['liste', 'Ma liste'], ['conseils', 'Conseils']], render: renderTransferts },
-    entrainement: { tabs: [['planning', 'Planning'], ['individuel', 'Individuel'], ['jeunes', 'Jeunes'], ['fatigue', 'Fatigue']], render: renderEntrainement },
-    match: { tabs: [['avant', 'Avant'], ['pendant', 'Pendant'], ['causeries', 'Causeries']], render: renderMatch },
-    guide: { tabs: [['depart', 'Premiers pas'], ['interface', "L'interface"], ['nouveautes', 'Nouveautés FM27'], ['glossaire', 'Glossaire'], ['pieges', 'Pièges']], render: renderGuide },
-  };
+  function staffCards() {
+    return STAFF.map((s) => `<button type="button" class="staff-card" data-open="${s.id}">
+      <span class="face" style="--c:${s.glow}">${face(s.id)}</span>
+      <span><b>${esc(s.name)}</b><span>${esc(s.topic)}</span></span></button>`).join('');
+  }
 
-  function renderModule(id, animate) {
+  /* ---------------- Boîte de message (dans la salle) ---------------- */
+  const msg = { lines: [], i: 0, typing: false, timer: null };
+  function say(lines, speakerId) {
+    msg.lines = Array.isArray(lines) ? lines : [lines];
+    msg.i = 0;
+    const s = speakerId && staffById[speakerId];
+    $('#msgFace').hidden = !s;
+    $('#msgName').hidden = !s;
+    if (s) { $('#msgFace').innerHTML = face(s.id); $('#msgFace').style.setProperty('--c', s.glow); $('#msgName').textContent = s.name; }
+    $('#msgbox').hidden = false;
+    window.WORLD.pause(true);
+    typeInto($('#msgText'), msg, () => {});
+  }
+  function typeInto(el, box, onTick) {
+    clearInterval(box.timer);
+    const txt = box.lines[box.i];
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) { el.textContent = txt; box.typing = false; onTick(false); return; }
+    let n = 0; box.typing = true; el.textContent = '';
+    box.timer = setInterval(() => {
+      n += 2;
+      el.textContent = txt.slice(0, n);
+      onTick(true, n);
+      if (n >= txt.length) { clearInterval(box.timer); box.typing = false; onTick(false); }
+    }, 18);
+  }
+  function msgNext() {
+    if (msg.typing) { clearInterval(msg.timer); msg.typing = false; $('#msgText').textContent = msg.lines[msg.i]; return; }
+    if (msg.i < msg.lines.length - 1) { msg.i++; typeInto($('#msgText'), msg, () => {}); return; }
+    $('#msgbox').hidden = true;
+    window.WORLD.pause(false);
+  }
+  $('#msgbox .msg-inner').addEventListener('click', msgNext);
+
+  /* ---------------- Conversation ---------------- */
+  const convo = { id: null, lines: [], i: 0, typing: false, timer: null };
+  const convoEl = $('#convo');
+  let blinkT = null;
+
+  function openConvo(id, tab) {
     const s = staffById[id];
+    if (!s) return;
+    if (tab) state.tabs[id] = tab;
+    convo.id = id;
+    window.WORLD.pause(true);
+    $('#msgbox').hidden = true;
+    $('#sheet').hidden = true;
+    convoEl.hidden = false;
+    $('#convoChar').style.setProperty('--glow', s.glow);
+    $('#charArt').innerHTML = ARTS[id];
+    $('#plateName').textContent = s.name;
+    $('#plateRole').textContent = s.role;
+    $('#speechName').textContent = s.name;
+    renderTabs(id);
+    speak(s.lines());
+    $('#convoBody').scrollTop = 0;
+    if (location.hash.slice(1) !== id) history.replaceState(null, '', '#' + id);
+    clearInterval(blinkT);
+    blinkT = setInterval(() => {
+      const c = $('#convoChar');
+      c.classList.add('blink');
+      setTimeout(() => c.classList.remove('blink'), 140);
+    }, 3200);
+  }
+  function closeConvo() {
+    convoEl.hidden = true;
+    convo.id = null;
+    clearInterval(convo.timer); clearInterval(blinkT);
+    window.WORLD.pause(false);
+    history.replaceState(null, '', location.pathname + location.search);
+    updateHud(); refreshWorld();
+  }
+  function speak(lines) {
+    convo.lines = lines; convo.i = 0;
+    showLine();
+  }
+  function showLine() {
+    const c = $('#convoChar');
+    $('#speechNext').hidden = convo.i >= convo.lines.length - 1;
+    typeInto($('#speechText'), convo, (talking, n) => {
+      c.classList.toggle('talking', talking);
+      c.classList.toggle('mo', talking && Math.floor((n || 0) / 6) % 2 === 0);
+    });
+  }
+  function speechNext() {
+    if (convo.typing) { clearInterval(convo.timer); convo.typing = false; $('#speechText').textContent = convo.lines[convo.i]; $('#convoChar').classList.remove('talking', 'mo'); return; }
+    if (convo.i < convo.lines.length - 1) { convo.i++; showLine(); }
+  }
+  $('#speech').addEventListener('click', speechNext);
+  $('#speech').addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); speechNext(); } });
+  $('#convoClose').addEventListener('click', closeConvo);
+
+  function renderTabs(id) {
     const mod = MODULES[id];
-    const tab = state.tabs[id] || mod.tabs[0][0];
-    bottom.innerHTML = `
-      ${talkBox(s, s.lines())}
-      <div class="tabs" role="tablist">
-        ${mod.tabs.map(([k, l]) => `<button type="button" class="tab" role="tab" aria-selected="${k === tab}" data-tab="${k}">${esc(l)}</button>`).join('')}
-        <button type="button" class="tab" data-home style="margin-left:auto">◀ Retour</button>
-      </div>
-      <div id="content"></div>`;
-    $$('[data-tab]', bottom).forEach((b) => b.addEventListener('click', () => {
+    const tab = state.tabs[id] && mod.tabs.some(([k]) => k === state.tabs[id]) ? state.tabs[id] : mod.tabs[0][0];
+    $('#tabs').innerHTML = mod.tabs.map(([k, l]) => `<button type="button" class="tab" role="tab" aria-selected="${k === tab}" data-tab="${k}">${esc(l)}</button>`).join('');
+    $$('[data-tab]', $('#tabs')).forEach((b) => b.addEventListener('click', () => {
       state.tabs[id] = b.dataset.tab;
       store.set('tabs', state.tabs);
-      $$('[data-tab]', bottom).forEach((x) => x.setAttribute('aria-selected', x === b));
+      $$('[data-tab]', $('#tabs')).forEach((x) => x.setAttribute('aria-selected', x === b));
       mod.render($('#content'), b.dataset.tab);
     }));
-    $('[data-home]', bottom).addEventListener('click', () => go('accueil'));
     mod.render($('#content'), tab);
-    bindTalk(animate);
   }
+
+  const MODULES = {
+    club: { tabs: [['fiche', 'Fiche du club'], ['carnet', 'Carnet de saison']], render: (el, t) => renderClub(el, t) },
+    tactique: { tabs: [['assistant', 'Assistant'], ['systemes', 'Les systèmes'], ['diagnostic', 'Diagnostic'], ['regles', "Règles d'or"]], render: (el, t) => renderTactique(el, t) },
+    transferts: { tabs: [['fiche', 'Fiche de poste'], ['calcul', 'Calculateur'], ['liste', 'Ma liste'], ['conseils', 'Conseils']], render: (el, t) => renderTransferts(el, t) },
+    entrainement: { tabs: [['planning', 'Planning'], ['individuel', 'Individuel'], ['jeunes', 'Jeunes'], ['fatigue', 'Fatigue']], render: (el, t) => renderEntrainement(el, t) },
+    match: { tabs: [['avant', 'Avant'], ['pendant', 'Pendant'], ['causeries', 'Causeries']], render: (el, t) => renderMatch(el, t) },
+    guide: { tabs: [['depart', 'Premiers pas'], ['interface', "L'interface"], ['nouveautes', 'Nouveautés FM27'], ['glossaire', 'Glossaire'], ['pieges', 'Pièges']], render: (el, t) => renderGuide(el, t) },
+  };
 
   /* ----- Margaux : fiche du club + carnet ----- */
   const STATUT_CONSEILS = {
@@ -506,13 +276,14 @@
       const fd = new FormData(e.target);
       state.profile = Object.fromEntries(fd.entries());
       store.set('profile', state.profile);
+      state.profileSaved = true;
       state.tactic.statut = state.profile.statut;
       state.tactic.style = state.profile.style;
       $('#saved').textContent = 'Fiche enregistrée.';
       updateHud();
-      updateBubbles();
+      refreshWorld();
       showAdvice();
-      toast(`Margaux : « C'est noté pour ${state.profile.club || 'le club'} ! Va voir le reste du staff. »`);
+      speak([`C'est noté pour ${state.profile.club || 'le club'} ! Tout le staff a reçu la fiche.`, 'Va voir Bernard pour la tactique, ou Sami pour le mercato.']);
     });
   }
 
@@ -935,7 +706,7 @@
       $$('[data-ck]', el).forEach((b) => b.addEventListener('change', () => {
         state.checklist[b.dataset.ck] = b.checked;
         store.set('checklist', state.checklist);
-        if (b.checked) toast(pick(['Jacques : « Bien joué, petit ! »', 'Jacques : « Une étape de plus. »', 'Jacques : « Tu apprends vite. »']));
+        if (b.checked) speak([pick(['Bien joué, petit ! Une étape de plus.', 'Tu apprends vite. Continue comme ça.', 'Parfait. Passe à la suivante quand tu es prêt.'])]);
         renderGuide(el, tab);
         updateHud();
       }));
@@ -964,8 +735,58 @@
     }
   }
 
+
   /* ---------------- Démarrage ---------------- */
-  state.tabs = store.get('tabs', {});
-  buildRoom();
-  renderRoute(true);
+  window.WORLD.init({
+    canvas: $('#world'),
+    staff: STAFF.map((s) => ({ id: s.id, x: s.x, y: s.y, dir: s.dir, sprite: s.sprite, fixed: s.id === 'club' || s.id === 'transferts' })),
+    player: PLAYER,
+    onTalk: (id) => openConvo(id),
+    onMessage: (text) => say(text),
+    onActivity: () => $('#hint').classList.add('fade'),
+  });
+
+  $('#sheetList').innerHTML = staffCards();
+  $('#dock').innerHTML = `<h2>Ton staff</h2><div class="staff-grid">${staffCards()}</div>`;
+  $$('[data-open]').forEach((b) => b.addEventListener('click', () => openConvo(b.dataset.open)));
+  $('#hudStaff').addEventListener('click', () => { $('#sheet').hidden = false; window.WORLD.pause(true); $('#sheetClose').focus(); });
+  const closeSheet = () => { $('#sheet').hidden = true; window.WORLD.pause(false); };
+  $('#sheetClose').addEventListener('click', closeSheet);
+  $('#sheet').addEventListener('click', (e) => { if (e.target.id === 'sheet') closeSheet(); });
+  $('#hudClub').addEventListener('click', () => openConvo('club', 'fiche'));
+  $('#hudProgress').addEventListener('click', () => openConvo('guide', 'depart'));
+  $('#hudHelp').addEventListener('click', () => say([
+    'Clique sur le sol pour te déplacer. Tu peux aussi utiliser les flèches du clavier (ou Z Q S D).',
+    "Clique sur un membre du staff pour aller lui parler. Au clavier : place-toi face à lui et appuie sur Entrée.",
+    'Le bouton « Mon staff » ouvre directement une conversation. Échap te ramène au centre.',
+  ], 'guide'));
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (!convoEl.hidden) closeConvo();
+    else if (!$('#sheet').hidden) closeSheet();
+    else if (!$('#msgbox').hidden) { $('#msgbox').hidden = true; window.WORLD.pause(false); }
+  });
+  document.addEventListener('keydown', (e) => {
+    if ($('#msgbox').hidden || (e.key !== 'Enter' && e.key !== ' ')) return;
+    e.preventDefault(); e.stopPropagation(); msgNext();
+  }, true);
+
+  window.addEventListener('hashchange', () => {
+    const id = location.hash.slice(1);
+    if (staffById[id] && convo.id !== id) openConvo(id);
+  });
+
+  updateHud();
+  refreshWorld();
+  setTimeout(() => $('#hint').classList.add('fade'), 9000);
+  const start = location.hash.slice(1);
+  if (staffById[start]) openConvo(start);
+  else if (!state.profileSaved) {
+    setTimeout(() => say([
+      `Bienvenue au centre d'entraînement de l'${state.profile.club}, coach ! Je suis Margaux, à l'accueil.`,
+      "Tout le staff est là pour t'aider. Clique sur quelqu'un pour lui parler : Bernard pour la tactique, Sami pour le mercato, Inès pour l'entraînement, Théo pour les matchs.",
+      "Commence par venir me voir au comptoir pour compléter la fiche du club. Et si tu débutes, Jacques, près de l'entrée, a une liste des premiers pas.",
+    ], 'club'), 500);
+  }
 })();

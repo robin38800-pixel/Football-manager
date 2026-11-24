@@ -1,8 +1,6 @@
 # Staff de Poche FM27
 
-Un site qui joue le rôle de ton staff pour une carrière sur **Football Manager 27**, présenté comme une console portable à double écran en pixel art.
-
-Dans l'écran du haut, tu te déplaces dans le centre d'entraînement (flèches ou croix directionnelle) et tu parles au staff avec **A**. L'écran du bas affiche les conseils et les outils de chacun :
+Un site qui joue le rôle de ton staff pour une carrière sur **Football Manager 27** avec l'Olympique Lyonnais. Il se présente comme un jeu en pixel art : tu te déplaces dans le centre d'entraînement aux couleurs du club, en cliquant sur le sol ou avec les flèches du clavier, et tu cliques sur un membre du staff pour lui parler. Le personnage apparaît alors en grand à gauche, la discussion et ses outils à droite :
 
 | Staff | Rôle | Ce qu'il fait pour toi |
 |---|---|---|

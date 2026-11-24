@@ -5,47 +5,76 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Staff de Poche FM27</title>
   <meta name="claude:viewport-fit-sides" content="cover">
-  <meta name="description" content="Ton staff technique en pixel art pour bien démarrer ta carrière sur Football Manager 27 : tactiques, transferts, entraînement, matchs et guide du débutant.">
+  <meta name="description" content="Ton staff technique pour ta carrière sur Football Manager 27 : tactiques, transferts, entraînement, matchs et guide du débutant.">
+  <meta name="theme-color" content="#0f1f4a">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&family=Press+Start+2P&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <div class="console">
-    <div class="console-left">
-      <header class="brand">
-        <span class="brand-led" aria-hidden="true"></span>
-        <h1>Staff de Poche <small>FM27</small></h1>
+  <main class="game">
+    <div class="stage" id="stage">
+      <canvas id="world" aria-label="Centre d'entraînement : clique sur un membre du staff pour lui parler"></canvas>
+
+      <header class="hud">
+        <button type="button" class="club-chip" id="hudClub" aria-label="Fiche du club">
+          <span class="club-mark" aria-hidden="true"></span>
+          <span class="club-txt"><b id="hudName">Olympique Lyonnais</b><small id="hudSub">Ligue 1 · 2026/27</small></span>
+        </button>
+        <div class="hud-actions">
+          <button type="button" class="hud-btn" id="hudProgress" aria-label="Premiers pas">
+            <span class="star" aria-hidden="true">★</span><span id="hudProgressTxt">0/12</span>
+          </button>
+          <button type="button" class="hud-btn primary" id="hudStaff">Mon staff</button>
+          <button type="button" class="hud-btn round" id="hudHelp" aria-label="Aide">?</button>
+        </div>
       </header>
 
-      <section class="screen screen-top" aria-label="Centre d'entraînement : approche un membre du staff pour lui parler">
-        <div class="room" id="room"></div>
-        <div class="hud" id="hud"></div>
-        <div class="toast" id="toast" hidden></div>
-      </section>
+      <p class="hint" id="hint">Clique sur le sol pour te déplacer, et sur un membre du staff pour lui parler.</p>
 
-      <div class="hinge">
-        <div class="dpad" aria-label="Croix directionnelle">
-          <button type="button" class="dp up" data-dir="up" aria-label="Haut">▲</button>
-          <button type="button" class="dp left" data-dir="left" aria-label="Gauche">◀</button>
-          <span class="dp mid" aria-hidden="true"></span>
-          <button type="button" class="dp right" data-dir="right" aria-label="Droite">▶</button>
-          <button type="button" class="dp down" data-dir="down" aria-label="Bas">▼</button>
-        </div>
-        <p class="hint">Flèches pour marcher<br>A pour parler · B pour revenir</p>
-        <div class="ab">
-          <button type="button" class="btn-b" id="btnB" aria-label="B : retour au menu">B</button>
-          <button type="button" class="btn-a" id="btnA" aria-label="A : parler">A</button>
+      <div class="msgbox" id="msgbox" hidden>
+        <div class="msg-inner" role="button" tabindex="0">
+          <div class="msg-face" id="msgFace" hidden></div>
+          <div class="msg-body"><b class="msg-name" id="msgName" hidden></b><p id="msgText"></p></div>
+          <span class="msg-next" aria-hidden="true">▼</span>
         </div>
       </div>
     </div>
 
-    <section class="screen screen-bottom" id="bottom" aria-live="polite"></section>
+    <nav class="dock" id="dock" aria-label="Ton staff"></nav>
+  </main>
+
+  <div class="sheet" id="sheet" hidden>
+    <div class="sheet-card" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+      <div class="sheet-head"><h2 id="sheetTitle">Ton staff</h2><button type="button" class="icon-btn" id="sheetClose" aria-label="Fermer">✕</button></div>
+      <div class="staff-grid" id="sheetList"></div>
+    </div>
+  </div>
+
+  <div class="convo" id="convo" hidden role="dialog" aria-modal="true" aria-labelledby="speechName">
+    <aside class="convo-char" id="convoChar">
+      <div class="char-bg" aria-hidden="true"></div>
+      <div class="char-art" id="charArt"></div>
+      <div class="nameplate"><b id="plateName"></b><span id="plateRole"></span></div>
+    </aside>
+    <div class="convo-speech">
+      <div class="speech" id="speech" role="button" tabindex="0" aria-label="Dialogue : clique pour continuer">
+        <div class="speech-tag"><b id="speechName"></b></div>
+        <p id="speechText"></p>
+        <span class="speech-next" id="speechNext" aria-hidden="true">▼</span>
+      </div>
+      <button type="button" class="icon-btn close" id="convoClose" aria-label="Retour au centre d'entraînement">✕</button>
+    </div>
+    <section class="convo-body" id="convoBody">
+      <div class="tabs" role="tablist" id="tabs"></div>
+      <div id="content"></div>
+    </section>
   </div>
 
   <script src="js/data.js"></script>
-  <script src="js/sprites.js"></script>
+  <script src="js/art.js"></script>
+  <script src="js/world.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
