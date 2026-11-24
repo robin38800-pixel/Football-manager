@@ -240,7 +240,7 @@ const POSTES_RECRUT = [
   {
     id: 'gb', label: 'Gardien',
     styles: {
-      classique: { label: 'Gardien classique', cles: ['Réflexes', 'Arrêts réflexes / Un contre un', 'Placement', 'Prise de balle'], bonus: ['Jeu aérien', 'Commandement de la surface', 'Concentration', 'Communication'] },
+      classique: { label: 'Gardien classique', cles: ['Réflexes', 'Un contre un', 'Placement', 'Prise de balle'], bonus: ['Jeu aérien', 'Commandement de la surface', 'Concentration', 'Communication'] },
       relanceur: { label: 'Gardien relanceur', cles: ['Réflexes', 'Jeu au pied', 'Passes', 'Sang-froid'], bonus: ['Sorties', 'Vision', 'Accélération', 'Décisions'] },
     },
   },

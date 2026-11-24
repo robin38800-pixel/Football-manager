@@ -13,6 +13,10 @@ Un site qui joue le rôle de ton staff pour une carrière sur **Football Manager
 
 Les données (fiche du club, notes, liste de cibles, check-list) restent dans le navigateur (localStorage).
 
+## Importer les données de ta partie
+
+Margaux (onglet « Importer depuis FM ») accepte un export de FM au format CSV, HTML ou texte, ou un tableau collé. Les colonnes sont reconnues automatiquement (abréviations anglaises de FM comme `Fin`, `OtB`, `Cmp`, noms anglais ou français) et peuvent être corrigées à la main. L'effectif importé est analysé par Bernard (« Mon effectif ») et chaque joueur peut être chargé dans la fiche joueur de Sami.
+
 ## Lancer le site
 
 Aucun outil à installer : ouvre `index.html` dans un navigateur, ou active GitHub Pages sur la branche.

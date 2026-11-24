@@ -235,8 +235,8 @@
   }
 
   const MODULES = {
-    club: { tabs: [['fiche', 'Fiche du club'], ['carnet', 'Carnet de saison']], render: (el, t) => renderClub(el, t) },
-    tactique: { tabs: [['assistant', 'Assistant'], ['systemes', 'Les systèmes'], ['diagnostic', 'Diagnostic'], ['regles', "Règles d'or"]], render: (el, t) => renderTactique(el, t) },
+    club: { tabs: [['fiche', 'Fiche du club'], ['import', 'Importer depuis FM'], ['carnet', 'Carnet de saison']], render: (el, t) => renderClub(el, t) },
+    tactique: { tabs: [['assistant', 'Assistant'], ['effectif', 'Mon effectif'], ['systemes', 'Les systèmes'], ['diagnostic', 'Diagnostic'], ['regles', "Règles d'or"]], render: (el, t) => renderTactique(el, t) },
     transferts: { tabs: [['profils', 'Profils proposés'], ['joueur', 'Fiche joueur'], ['fiche', 'Fiche de poste'], ['calcul', 'Calculateur'], ['liste', 'Ma liste'], ['conseils', 'Conseils']], render: (el, t) => renderTransferts(el, t) },
     entrainement: { tabs: [['planning', 'Planning'], ['individuel', 'Individuel'], ['jeunes', 'Jeunes'], ['fatigue', 'Fatigue']], render: (el, t) => renderEntrainement(el, t) },
     match: { tabs: [['avant', 'Avant'], ['pendant', 'Pendant'], ['causeries', 'Causeries']], render: (el, t) => renderMatch(el, t) },
@@ -254,6 +254,7 @@
 
   function renderClub(el, tab) {
     if (tab === 'carnet') return renderCarnet(el);
+    if (tab === 'import') return renderImport(el);
     const p = state.profile || {};
     const opt = (list, val) => list.map((o) => `<option value="${o.id}" ${o.id === val ? 'selected' : ''}>${esc(o.label)}</option>`).join('');
     el.innerHTML = `
@@ -419,6 +420,7 @@
   }
 
   function renderTactique(el, tab) {
+    if (tab === 'effectif') return renderEffectif(el);
     const t = state.tactic;
     const p = state.profile || {};
     t.statut = t.statut || p.statut || 'milieu';
@@ -584,6 +586,7 @@
         <h2>Fiche joueur</h2>
         ${fj.ex ? '<p class="muted"><span class="ex-tag">exemple</span> Remplace ces valeurs par celles de ton joueur.</p>' : ''}
         <p class="muted">Recopie les attributs depuis le profil du joueur dans FM27 (ou sa page FMInside), et sa valeur depuis Transfermarkt.</p>
+        ${state.squad.length + state.scouted.length ? `<div class="field" style="margin-bottom:14px;max-width:420px"><label for="fj-load">Charger un joueur importé depuis FM</label><select id="fj-load"><option value="">Choisir un joueur…</option>${state.squad.length ? `<optgroup label="Mon effectif">${state.squad.map((x) => `<option>${esc(x.nom)}</option>`).join('')}</optgroup>` : ''}${state.scouted.length ? `<optgroup label="Joueurs observés">${state.scouted.map((x) => `<option>${esc(x.nom)}</option>`).join('')}</optgroup>` : ''}</select></div>` : ''}
         <div class="form">
           <div class="field"><label for="fj-nom">Nom</label><input id="fj-nom" name="nom" value="${esc(fj.nom)}"></div>
           <div class="field"><label for="fj-age">Âge</label><input id="fj-age" name="age" inputmode="numeric" value="${esc(fj.age)}"></div>
@@ -678,11 +681,14 @@
 
     const form = $('#fjForm', el);
     form.addEventListener('submit', (e) => e.preventDefault());
+    const load = $('#fj-load', el);
+    if (load) load.addEventListener('change', () => { if (!load.value) return; loadImported(load.value); renderFicheJoueur(el); speak([`Voici la fiche de ${state.fj.nom}, d'après tes données de FM.`]); });
     form.addEventListener('input', (e) => {
       const t = e.target;
       if (fj.ex) delete fj.ex;
       if (t.dataset.attr) fj.attrs[t.dataset.attr] = t.value.replace(/[^0-9]/g, '').slice(0, 2);
       else if (t.name) fj[t.name] = t.value;
+      else return;
       store.set('fjDraft', fj);
       if (t.name === 'poste' || t.name === 'style') { if (t.name === 'poste') fj.style = Object.keys(POSTES_RECRUT.find((x) => x.id === fj.poste).styles)[0]; renderFicheJoueur(el); return; }
       drawCard();
@@ -978,6 +984,279 @@
     }
   }
 
+
+  /* ---------------- Import des données de FM ---------------- */
+  const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[.:]/g, '').replace(/\s+/g, ' ').trim();
+
+  /* Attributs : abréviations anglaises de FM, noms anglais complets et noms français */
+  const ATTR_ALIASES = {
+    'Centres': ['cro', 'crossing'], 'Dribbles': ['dri', 'dribbling'], 'Finition': ['fin', 'finishing'], 'Contrôle': ['fir', 'first touch', 'controle de balle'],
+    'Jeu de tête': ['hea', 'heading'], 'Tirs de loin': ['lon', 'long shots'], 'Marquage': ['mar', 'marking'], 'Passes': ['pas', 'passing'],
+    'Tacles': ['tck', 'tackling'], 'Technique': ['tec', 'technique'], 'Agressivité': ['agg', 'aggression'], 'Anticipation': ['ant', 'anticipation'],
+    'Bravoure': ['bra', 'bravery', 'courage'], 'Sang-froid': ['cmp', 'composure'], 'Concentration': ['cnt', 'concentration'], 'Décisions': ['dec', 'decisions'],
+    'Détermination': ['det', 'determination'], 'Flair': ['fla', 'flair'], 'Leadership': ['ldr', 'leadership'], 'Déplacement': ['otb', 'off the ball', 'deplacements', 'appels'],
+    'Placement': ['pos', 'positioning'], 'Jeu collectif': ['tea', 'teamwork', 'collectif'], 'Vision': ['vis', 'vision'], 'Volume de jeu': ['wor', 'work rate', 'activite'],
+    'Accélération': ['acc', 'acceleration'], 'Agilité': ['agi', 'agility'], 'Équilibre': ['bal', 'balance'], 'Détente': ['jum', 'jumping reach', 'detente verticale'],
+    'Vitesse': ['pac', 'pace'], 'Endurance': ['sta', 'stamina'], 'Puissance': ['str', 'strength', 'force'],
+    'Jeu aérien': ['aer', 'aerial reach'], 'Commandement de la surface': ['cmd', 'command of area'], 'Communication': ['com', 'communication'],
+    'Prise de balle': ['han', 'handling'], 'Jeu au pied': ['kic', 'kicking'], 'Un contre un': ['1v1', 'one on ones'], 'Réflexes': ['ref', 'reflexes'],
+    'Sorties': ['tro', 'rushing out', 'rushing out (tendency)'],
+  };
+  const FIELD_ALIASES = {
+    nom: ['name', 'nom', 'player', 'joueur'], poste: ['position', 'poste', 'best pos', 'meilleur poste', 'positions'], age: ['age'],
+    club: ['club', 'team', 'equipe'], valeur: ['value', 'valeur', 'transfer value', 'valeur de transfert', 'asking price', 'prix demande'],
+    salaire: ['wage', 'salaire', 'wages'], perso: ['personality', 'personnalite'], nat: ['nat', 'nationality', 'nationalite'],
+    ca: ['ca', 'current ability'], pa: ['pa', 'potential ability'],
+  };
+  const FIELD_LABELS = { nom: 'Nom', poste: 'Poste', age: 'Âge', club: 'Club', valeur: 'Valeur', salaire: 'Salaire', perso: 'Personnalité', nat: 'Nationalité', ca: 'CA', pa: 'PA' };
+  const ALL_ATTRS = Object.keys(ATTR_ALIASES);
+
+  function detectColumn(h) {
+    const n = norm(h);
+    for (const [k, list] of Object.entries(FIELD_ALIASES)) if (list.includes(n)) return 'f:' + k;
+    for (const [a, list] of Object.entries(ATTR_ALIASES)) if (norm(a) === n || list.includes(n)) return 'a:' + a;
+    return '';
+  }
+
+  function parseCsvLine(line, d) {
+    const out = []; let cur = '', q = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (q) { if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; } else if (ch === '"') q = false; else cur += ch; }
+      else if (ch === '"') q = true; else if (ch === d) { out.push(cur); cur = ''; } else cur += ch;
+    }
+    out.push(cur);
+    return out.map((c) => c.trim());
+  }
+
+  function parseImport(text) {
+    let headers = [], rows = [];
+    if (/<table/i.test(text)) {
+      const doc = new DOMParser().parseFromString(text, 'text/html');
+      const tables = [...doc.querySelectorAll('table')].sort((a, b) => b.rows.length - a.rows.length);
+      if (!tables.length) return null;
+      const trs = [...tables[0].rows].map((tr) => [...tr.cells].map((c) => c.textContent.replace(/\s+/g, ' ').trim()));
+      headers = trs.shift() || [];
+      rows = trs;
+    } else {
+      const lines = text.replace(/\r/g, '').split('\n').filter((l) => l.trim() && !/^[-|+\s]+$/.test(l));
+      if (!lines.length) return null;
+      const first = lines[0];
+      const d = ['\t', ';', '|', ','].sort((a, b) => first.split(b).length - first.split(a).length)[0];
+      const all = lines.map((l) => parseCsvLine(l, d));
+      const clean = (r) => (d === '|' ? r.filter((_, i) => !(i === 0 && r[0] === '') && !(i === r.length - 1 && r[r.length - 1] === '')) : r);
+      headers = clean(all.shift());
+      rows = all.map(clean);
+    }
+    rows = rows.filter((r) => r.some((c) => c) && norm(r.join('|')) !== norm(headers.join('|')));
+    return { headers, rows };
+  }
+
+  function parseMoney(s) {
+    if (!s) return 0;
+    const parts = String(s).replace(/\s/g, '').replace(/,(\d{1,2})(?=[MKmk])/g, '.$1').match(/[\d.,]+\s*[MKmk]?/g);
+    if (!parts) return 0;
+    const vals = parts.map((p) => {
+      const m = p.match(/([\d.,]+)\s*([MKmk]?)/);
+      let n = parseFloat(m[1].replace(/,/g, ''));
+      if (/m/i.test(m[2])) n *= 1e6; else if (/k/i.test(m[2])) n *= 1e3;
+      return n;
+    }).filter((n) => isFinite(n) && n > 0);
+    return vals.length ? vals.reduce((x, y) => x + y, 0) / vals.length : 0;
+  }
+  function parseAttr(s) {
+    const m = String(s || '').match(/\d+(\.\d+)?/g);
+    if (!m) return null;
+    const v = m.map(Number).filter((n) => n >= 1 && n <= 20);
+    return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : null;
+  }
+
+  /* Postes FM → familles de postes du staff */
+  function postesFromFM(pos) {
+    const p = String(pos || '').toUpperCase();
+    const out = new Set();
+    if (/\b(GK|GB|G)\b/.test(p)) out.add('gb');
+    if (/\bD\s*\([^)]*[RL]/.test(p) || /\bWB/.test(p) || /\b(DD|DG|DL|DR|LD|LG|PD|PG|LB|RB)\b/.test(p)) out.add('lat');
+    if (/\bD\s*\([^)]*C/.test(p) || /\b(DC|CB)\b/.test(p)) out.add('dc');
+    if (/\b(DM|MDC|CDM)\b/.test(p)) out.add('mdc');
+    if (/\bM\s*\([^)]*C/.test(p) || /\b(MC|CM)\b/.test(p)) out.add('mc');
+    if (/\bAM\s*\([^)]*C/.test(p) || /\b(MOC|CAM|AMC|MO)\b/.test(p)) out.add('mo');
+    if (/\bAM\s*\([^)]*[RL]/.test(p) || /\bM\s*\([^)]*[RL]/.test(p) || /\b(MOG|MOD|MG|MD|AMR|AML|LW|RW|LM|RM|AG|AD)\b/.test(p)) out.add('ail');
+    if (/\b(ST|BU|ATT|CF|AT|SC)\b/.test(p)) out.add('bu');
+    return [...out];
+  }
+
+  /* Meilleur rôle d'un joueur, d'après ses attributs */
+  function bestRole(pl) {
+    const cands = postesFromFM(pl.poste);
+    const pool = POSTES_RECRUT.filter((x) => !cands.length || cands.includes(x.id));
+    let best = null;
+    pool.forEach((poste) => Object.entries(poste.styles).forEach(([sid, st]) => {
+      const keys = st.cles.filter((a) => pl.attrs[a] != null);
+      if (keys.length < 3) return;
+      const s = scoreFiche({ poste: poste.id, style: sid, attrs: pl.attrs });
+      if (s.fit != null && (!best || s.fit > best.fit)) best = { poste: poste.id, posteLabel: poste.label, style: sid, label: st.label, fit: s.fit };
+    }));
+    return best;
+  }
+
+  state.squad = store.get('squad', []);
+  state.scouted = store.get('scouted', []);
+  state.imp = { parsed: null, map: [], target: 'squad', error: '' };
+
+  function renderImport(el) {
+    const imp = state.imp;
+    const when = (k) => { const d = store.get(k + 'Date', ''); return d ? ` · importé le ${esc(d)}` : ''; };
+    el.innerHTML = `
+      <div class="textbox">
+        <h2>Importer depuis Football Manager</h2>
+        <p>Exporte un écran de FM27 (ton effectif, ou une recherche de joueurs) puis dépose le fichier ici. Je reconnais les fichiers CSV, HTML et texte, ainsi qu'un tableau copié-collé.</p>
+        <ol class="steps">
+          <li>Dans FM, ouvre l'écran à exporter et affiche les colonnes utiles : nom, poste, âge, valeur, salaire et les attributs (une vue « tous les attributs » est idéale).</li>
+          <li>Exporte la vue. Selon ta version : l'export de vue du jeu s'il est disponible, ou le plugin communautaire d'export de joueurs (touche F9) qui crée un CSV ou un HTML.</li>
+          <li>Dépose le fichier ci-dessous, vérifie les colonnes, puis importe.</li>
+        </ol>
+        <div class="drop" id="drop" tabindex="0">
+          <b>Dépose ton fichier ici</b>
+          <span>ou</span>
+          <label class="btn small" for="impFile">Choisir un fichier</label>
+          <input type="file" id="impFile" accept=".csv,.txt,.html,.htm,.rtf,.tsv" hidden>
+        </div>
+        <details class="acc" style="margin-top:12px"><summary>Coller un tableau à la place</summary><div class="body">
+          <div class="field full"><label for="impPaste">Contenu (une ligne par joueur, avec la ligne d'en-têtes)</label><textarea id="impPaste" placeholder="Name;Position;Age;Value;Fin;Fir;OtB;Cmp..."></textarea></div>
+          <div class="row" style="margin-top:8px"><button type="button" class="btn small" id="impPasteGo">Analyser</button></div>
+        </div></details>
+        ${imp.error ? `<p class="imp-error">${esc(imp.error)}</p>` : ''}
+      </div>
+      <div id="impMap"></div>
+      <div class="textbox">
+        <h2>Données importées</h2>
+        <div class="grid2">
+          <div class="panel"><h3>Mon effectif</h3><p style="margin:0">${state.squad.length} joueur${state.squad.length > 1 ? 's' : ''}${when('squad')}</p>${state.squad.length ? '<div class="row" style="margin-top:10px"><button type="button" class="btn small alt" data-goto="tactique:effectif">Analyse de Bernard</button><button type="button" class="x" data-clear="squad">Effacer</button></div>' : ''}</div>
+          <div class="panel"><h3>Joueurs observés</h3><p style="margin:0">${state.scouted.length} joueur${state.scouted.length > 1 ? 's' : ''}${when('scouted')}</p>${state.scouted.length ? '<div class="row" style="margin-top:10px"><button type="button" class="btn small alt" data-goto="transferts:joueur">Fiches de Sami</button><button type="button" class="x" data-clear="scouted">Effacer</button></div>' : ''}</div>
+        </div>
+        <p class="muted" style="margin-top:10px">Les données restent dans ce navigateur. Réimporte après chaque journée pour garder le staff à jour.</p>
+      </div>`;
+
+    const handleText = (text) => {
+      const parsed = parseImport(text);
+      if (!parsed || !parsed.headers.length || !parsed.rows.length) { imp.error = "Je n'ai pas trouvé de tableau dans ce fichier. Vérifie qu'il s'agit bien d'un export CSV, HTML ou texte avec une ligne d'en-têtes."; imp.parsed = null; renderImport(el); return; }
+      imp.error = '';
+      imp.parsed = parsed;
+      imp.map = parsed.headers.map(detectColumn);
+      renderImport(el);
+      $('#impMap').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+    const readFile = (f) => { if (!f) return; const r = new FileReader(); r.onload = () => handleText(String(r.result)); r.readAsText(f); };
+    $('#impFile').addEventListener('change', (e) => readFile(e.target.files[0]));
+    const drop = $('#drop');
+    ['dragenter', 'dragover'].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add('over'); }));
+    ['dragleave', 'drop'].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.remove('over'); }));
+    drop.addEventListener('drop', (e) => readFile(e.dataTransfer.files[0]));
+    drop.addEventListener('paste', (e) => { const t = e.clipboardData.getData('text'); if (t) handleText(t); });
+    $('#impPasteGo').addEventListener('click', () => handleText($('#impPaste').value));
+    $$('[data-clear]', el).forEach((b) => b.addEventListener('click', () => { state[b.dataset.clear] = []; store.set(b.dataset.clear, []); renderImport(el); }));
+    $$('[data-goto]', el).forEach((b) => b.addEventListener('click', () => { const [id, tab] = b.dataset.goto.split(':'); openConvo(id, tab); }));
+
+    if (imp.parsed) renderMapping($('#impMap'), el);
+  }
+
+  function renderMapping(box, parent) {
+    const imp = state.imp, { headers, rows } = imp.parsed;
+    const options = (cur) => `<option value="">Ignorer</option>
+      <optgroup label="Infos">${Object.entries(FIELD_LABELS).map(([k, l]) => `<option value="f:${k}" ${cur === 'f:' + k ? 'selected' : ''}>${l}</option>`).join('')}</optgroup>
+      <optgroup label="Attributs">${ALL_ATTRS.map((a) => `<option value="a:${esc(a)}" ${cur === 'a:' + a ? 'selected' : ''}>${esc(a)}</option>`).join('')}</optgroup>`;
+    const recognized = imp.map.filter(Boolean).length;
+    const nAttrs = imp.map.filter((m) => m.startsWith('a:')).length;
+    box.innerHTML = `<div class="textbox">
+      <h2>Vérifie les colonnes</h2>
+      <p>J'ai trouvé <b>${rows.length} joueurs</b> et reconnu <b>${recognized} colonnes sur ${headers.length}</b>, dont ${nAttrs} attributs. Corrige si besoin, puis choisis où ranger ces joueurs.</p>
+      ${imp.map.includes('f:nom') ? '' : '<p class="imp-error">Indique quelle colonne contient le nom des joueurs.</p>'}
+      <div class="scroll-x"><table class="map">
+        <thead><tr><th>Colonne du fichier</th><th>Exemple</th><th>Correspond à</th></tr></thead>
+        <tbody>${headers.map((h, i) => `<tr class="${imp.map[i] ? '' : 'off'}"><td><b>${esc(h || '(vide)')}</b></td><td>${esc((rows[0] || [])[i] || '')}</td><td><select data-col="${i}" aria-label="Correspondance de la colonne ${esc(h)}">${options(imp.map[i])}</select></td></tr>`).join('')}</tbody>
+      </table></div>
+      <p class="lbl" style="margin-top:14px">Ces joueurs sont</p>
+      ${chips('imptarget', [{ id: 'squad', label: 'Mon effectif' }, { id: 'scouted', label: 'Des joueurs observés (recherche, recrutement)' }], imp.target)}
+      <div class="row" style="margin-top:14px"><button type="button" class="btn" id="impGo" ${imp.map.includes('f:nom') ? '' : 'disabled'}>Importer ${rows.length} joueurs</button><button type="button" class="btn alt small" id="impCancel">Annuler</button></div>
+    </div>`;
+    $$('[data-col]', box).forEach((s) => s.addEventListener('change', () => { imp.map[+s.dataset.col] = s.value; renderMapping(box, parent); }));
+    bindChips(box, 'imptarget', (v) => { imp.target = v; });
+    $('#impCancel', box).addEventListener('click', () => { imp.parsed = null; box.innerHTML = ''; });
+    $('#impGo', box).addEventListener('click', () => {
+      const players = rows.map((r) => {
+        const pl = { attrs: {} };
+        imp.map.forEach((m, i) => {
+          if (!m) return;
+          const v = r[i];
+          if (m.startsWith('a:')) { const a = parseAttr(v); if (a != null) pl.attrs[m.slice(2)] = a; return; }
+          const k = m.slice(2);
+          if (k === 'valeur' || k === 'salaire') { pl[k + 'Txt'] = v; pl[k] = parseMoney(v); }
+          else if (k === 'age') pl.age = parseInt(v, 10) || '';
+          else pl[k] = v;
+        });
+        return pl;
+      }).filter((pl) => pl.nom);
+      players.forEach((pl) => { pl.best = bestRole(pl); });
+      state[imp.target] = players;
+      store.set(imp.target, players);
+      store.set(imp.target + 'Date', new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }));
+      const target = imp.target;
+      imp.parsed = null;
+      renderImport(parent);
+      cheer(target === 'squad'
+        ? [`${players.length} joueurs enregistrés dans le registre du club !`, "Bernard a déjà ton effectif sous les yeux : va voir son onglet « Mon effectif »."]
+        : [`${players.length} joueurs observés enregistrés !`, 'Sami peut maintenant faire la fiche de chacun d’eux : onglet « Fiche joueur ».']);
+    });
+  }
+
+  /* Bernard : analyse de l'effectif importé */
+  const FAMILLES = [['gb', 'Gardiens'], ['dc', 'Défenseurs centraux'], ['lat', 'Latéraux'], ['mdc', 'Milieux défensifs'], ['mc', 'Milieux centraux'], ['mo', 'Milieux offensifs'], ['ail', 'Ailiers'], ['bu', 'Attaquants']];
+  function renderEffectif(el) {
+    const sq = state.squad;
+    if (!sq.length) {
+      el.innerHTML = `<div class="textbox"><h2>Mon effectif</h2><p>Je n'ai pas encore ton effectif. Exporte l'écran Effectif depuis FM27 et donne-le à Margaux : je l'analyse ensuite poste par poste.</p><button type="button" class="btn" data-goto="club:import">Importer mon effectif</button></div>`;
+      $('[data-goto]', el).addEventListener('click', () => openConvo('club', 'import'));
+      return;
+    }
+    const seuil = SEUILS[state.profile.statut || 'milieu'] * 5;
+    const withAge = sq.filter((p) => p.age);
+    const avgAge = withAge.length ? (withAge.reduce((s, p) => s + p.age, 0) / withAge.length).toFixed(1).replace('.', ',') : '—';
+    const fams = FAMILLES.map(([id, label]) => {
+      const pls = sq.filter((p) => p.best && p.best.poste === id).sort((a, b) => b.best.fit - a.best.fit);
+      return { id, label, pls, top: pls[0] ? pls[0].best.fit : 0 };
+    });
+    const faibles = fams.filter((f) => f.top < seuil);
+    const noAttrs = sq.filter((p) => !p.best).length;
+    el.innerHTML = `
+      <div class="textbox">
+        <h2>Mon analyse de l'effectif</h2>
+        <div class="verdict">
+          <div class="k"><span>Joueurs</span><b>${sq.length}</b></div>
+          <div class="k"><span>Âge moyen</span><b>${avgAge}</b></div>
+          <div class="k"><span>Postes à renforcer</span><b>${faibles.length}</b></div>
+        </div>
+        ${faibles.length ? `<h3>Où recruter en priorité</h3><ul class="dots">${faibles.map((f) => `<li><b>${esc(f.label)}</b> : ${f.pls.length ? `ton meilleur joueur est à ${f.top}/100, sous le niveau visé (${seuil}).` : 'aucun joueur adapté dans ton effectif.'}</li>`).join('')}</ul><button type="button" class="btn small" style="margin-top:10px" data-goto="transferts:profils">Demander des profils à Sami</button>` : '<p style="margin-top:12px">Chaque poste a au moins un joueur au niveau visé. Beau travail !</p>'}
+        ${noAttrs ? `<p class="muted" style="margin-top:10px">${noAttrs} joueur${noAttrs > 1 ? 's' : ''} sans assez d'attributs pour être analysé${noAttrs > 1 ? 's' : ''} : ajoute des colonnes d'attributs à ta vue avant d'exporter.</p>` : ''}
+      </div>
+      ${fams.filter((f) => f.pls.length).map((f) => `<div class="textbox"><h2>${esc(f.label)}</h2><div class="scroll-x"><table class="sl"><thead><tr><th>Joueur</th><th>Âge</th><th>Rôle conseillé</th><th>Adéquation</th><th>Valeur</th><th></th></tr></thead><tbody>
+        ${f.pls.map((p) => `<tr><td><b>${esc(p.nom)}</b>${p.poste ? `<br><span class="muted">${esc(p.poste)}</span>` : ''}</td><td class="num">${esc(p.age || '')}</td><td>${esc(p.best.label)}</td>
+        <td><span class="fitbar"><span style="width:${p.best.fit}%" class="${p.best.fit >= seuil ? 'ok' : p.best.fit >= seuil - 10 ? 'mid' : 'low'}"></span></span> <b class="num">${p.best.fit}</b></td>
+        <td class="num">${esc(p.valeurTxt || (p.valeur ? money(p.valeur) : ''))}</td><td><button type="button" class="btn small alt" data-card="${esc(p.nom)}">Fiche</button></td></tr>`).join('')}
+      </tbody></table></div></div>`).join('')}`;
+    $$('[data-goto]', el).forEach((b) => b.addEventListener('click', () => { const [id, tab] = b.dataset.goto.split(':'); openConvo(id, tab); }));
+    $$('[data-card]', el).forEach((b) => b.addEventListener('click', () => { loadImported(b.dataset.card); openConvo('transferts', 'joueur'); }));
+  }
+
+  function loadImported(nom) {
+    const pl = [...state.squad, ...state.scouted].find((p) => p.nom === nom);
+    if (!pl) return;
+    const best = pl.best || bestRole(pl);
+    const poste = best ? best.poste : (postesFromFM(pl.poste)[0] || 'mc');
+    const style = best ? best.style : Object.keys(POSTES_RECRUT.find((x) => x.id === poste).styles)[0];
+    state.fj = { nom: pl.nom, age: pl.age ? String(pl.age) : '', club: pl.club || '', poste, style, valeur: pl.valeur ? String(Math.round(pl.valeur)) : '', salaire: pl.salaire ? String(Math.round(pl.salaire)) : '', perso: PERSONNALITES.includes(pl.perso) ? pl.perso : 'Inconnue', pot: '', attrs: { ...pl.attrs } };
+    store.set('fjDraft', state.fj);
+  }
 
   /* ---------------- Démarrage ---------------- */
   window.WORLD.init({

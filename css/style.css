@@ -458,6 +458,25 @@ ul.dots.good li::before { background: var(--green); }
   .pcard-id h2 { font-size: 21px; }
 }
 
+
+/* ---------------- Import depuis FM ---------------- */
+.drop { margin-top: 14px; border: 2px dashed var(--line-2); border-radius: 14px; background: var(--paper); padding: 22px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; text-align: center; }
+.drop.over { border-color: var(--royal); background: var(--blue-soft); }
+.drop b { font-family: var(--f-title); font-weight: 600; color: var(--navy); font-size: 18px; }
+.drop span { color: var(--ink-3); font-weight: 700; }
+.drop label.btn { cursor: pointer; }
+.imp-error { margin: 12px 0 0; padding: 10px 14px; border-radius: 10px; background: var(--red-soft); color: var(--red-2); font-weight: 700; }
+table.map { width: 100%; border-collapse: collapse; font-size: 14.5px; min-width: 520px; }
+table.map th { font-size: 12px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); text-align: left; padding: 6px 8px; }
+table.map td { padding: 6px 8px; border-top: 1px solid var(--line); }
+table.map tr.off td:not(:last-child) { color: var(--ink-3); }
+table.map select { background: var(--paper); border: 2px solid var(--line); border-radius: 8px; padding: 5px 8px; font-size: 14.5px; max-width: 230px; }
+.btn[disabled] { opacity: .45; cursor: not-allowed; }
+.fitbar { display: inline-block; width: 70px; height: 8px; background: var(--paper); border-radius: 999px; box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; vertical-align: middle; }
+.fitbar span { display: block; height: 100%; border-radius: 999px; background: var(--green); }
+.fitbar span.mid { background: var(--gold); }
+.fitbar span.low { background: var(--red); }
+
 /* ---------------- Tablettes et téléphones ---------------- */
 @media (max-width: 900px) {
   .convo { grid-template-columns: 40% 1fr; grid-template-areas: "char speech" "body body"; grid-template-rows: auto 1fr; }
