@@ -65,7 +65,7 @@
       id: 'transferts', name: 'Sami', role: 'Recruteur en chef', topic: 'Transferts et recrutement', x: 17, y: 3, dir: 'down', glow: 'rgba(242,182,50,.45)',
       sprite: { id: 'sami', hair: 'short', H: '#1f1a1a', S: '#8d5a3b', T: '#14285c', C: '#d71f30', P: '#3b3b4b', glasses: true },
       art: { skin: '#8d5a3b', hair: '#1f1a1a', hairStyle: 'fade', eyes: '#2a1a10', outfit: 'quarterzip', top: '#14285c', glasses: true, beard: 'stubble', beardColor: '#1f1a1a' },
-      lines: () => ["J'ai des yeux dans tous les championnats, coach.", 'Dis-moi quel poste tu veux renforcer : je te dis quels attributs regarder, et si le joueur rentre dans ton budget.'],
+      lines: () => ["J'ai des yeux dans tous les championnats, coach.", "J'ai épluché les listes de la communauté FM27 : voici mes profils. Pour n'importe quel joueur, je te fais aussi une fiche complète avec mon avis."],
     },
     {
       id: 'entrainement', name: 'Inès', role: 'Préparatrice physique', topic: 'Entraînement et jeunes', x: 3, y: 9, dir: 'right', glow: 'rgba(215,31,48,.5)',
@@ -226,7 +226,7 @@
   const MODULES = {
     club: { tabs: [['fiche', 'Fiche du club'], ['carnet', 'Carnet de saison']], render: (el, t) => renderClub(el, t) },
     tactique: { tabs: [['assistant', 'Assistant'], ['systemes', 'Les systèmes'], ['diagnostic', 'Diagnostic'], ['regles', "Règles d'or"]], render: (el, t) => renderTactique(el, t) },
-    transferts: { tabs: [['fiche', 'Fiche de poste'], ['calcul', 'Calculateur'], ['liste', 'Ma liste'], ['conseils', 'Conseils']], render: (el, t) => renderTransferts(el, t) },
+    transferts: { tabs: [['profils', 'Profils proposés'], ['joueur', 'Fiche joueur'], ['fiche', 'Fiche de poste'], ['calcul', 'Calculateur'], ['liste', 'Ma liste'], ['conseils', 'Conseils']], render: (el, t) => renderTransferts(el, t) },
     entrainement: { tabs: [['planning', 'Planning'], ['individuel', 'Individuel'], ['jeunes', 'Jeunes'], ['fatigue', 'Fatigue']], render: (el, t) => renderEntrainement(el, t) },
     match: { tabs: [['avant', 'Avant'], ['pendant', 'Pendant'], ['causeries', 'Causeries']], render: (el, t) => renderMatch(el, t) },
     guide: { tabs: [['depart', 'Premiers pas'], ['interface', "L'interface"], ['nouveautes', 'Nouveautés FM27'], ['glossaire', 'Glossaire'], ['pieges', 'Pièges']], render: (el, t) => renderGuide(el, t) },
@@ -460,7 +460,239 @@
   /* ----- Sami : transferts ----- */
   const SEUILS = { favori: 15, haut: 14, milieu: 13, maintien: 12, promu: 11 };
 
+  /* ----- Sami : profils proposés et fiches joueurs ----- */
+  const FJ_EXEMPLE = {
+    ex: true, nom: 'Joueur exemple', age: '22', club: 'Club exemple', poste: 'bu', style: 'complet', valeur: '15000000', salaire: '45000', perso: 'Déterminé', pot: '4',
+    attrs: { Finition: 15, Contrôle: 14, Déplacement: 15, Passes: 12, Accélération: 14, Technique: 13, 'Jeu de tête': 11, Puissance: 13 },
+  };
+  state.fj = store.get('fjDraft', null) || JSON.parse(JSON.stringify(FJ_EXEMPLE));
+  state.cards = store.get('cards', []);
+  state.prof = { cat: 'tous', poste: 'tous' };
+
+  const initials = (n) => n.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+  const linksHtml = (nom) => LIENS_JOUEUR(nom).map((l) => `<a class="ext" href="${esc(l.u)}" target="_blank" rel="noopener">${esc(l.t)} ↗</a>`).join('');
+  function ageAdvice(age) {
+    if (!age) return '';
+    if (age <= 21) return 'Jeune : sa valeur peut grimper. Contrat long (4-5 ans) conseillé.';
+    if (age <= 26) return 'Âge idéal : il va progresser ou rester à son meilleur niveau plusieurs saisons.';
+    if (age <= 29) return 'À son pic : bon pour gagner tout de suite, la revente sera plus faible.';
+    return 'Valeur de revente quasi nulle : contrat de 1 ou 2 ans maximum.';
+  }
+  function addToShortlist(entry) {
+    const l = state.shortlist ? state.shortlist.slice() : [];
+    if (l.some((j) => j.nom === entry.nom)) return false;
+    l.push({ id: Date.now().toString(36), status: 0, ...entry });
+    state.shortlist = l;
+    store.set('shortlist', l);
+    return true;
+  }
+
+  function renderProfils(el) {
+    const f = state.prof;
+    const list = PROFILS_COMMUNAUTE.filter((p) => (f.cat === 'tous' || p.cat === f.cat) && (f.poste === 'tous' || p.poste === f.poste));
+    const sources = [...new Set(PROFILS_COMMUNAUTE.flatMap((p) => p.src))];
+    el.innerHTML = `
+      <div class="textbox">
+        <h2>Les profils que je te propose</h2>
+        <p class="muted">J'ai épluché les listes de la communauté FM27 (Sortitoutsi, Passion4FM, FMPortugal, GiveMeSport...). Les prix sont ceux publiés par chaque site, dans leur devise : vérifie toujours dans ta partie, ils changent d'une sauvegarde à l'autre.</p>
+        <p class="lbl" style="margin-top:12px">Type de profil</p>
+        ${chips('pcat', [{ id: 'tous', label: 'Tous' }, ...Object.entries(CATS_PROFILS).map(([id, label]) => ({ id, label }))], f.cat)}
+        <p class="lbl" style="margin-top:12px">Poste</p>
+        ${chips('pposte', [{ id: 'tous', label: 'Tous' }, ...POSTES_RECRUT.map((x) => ({ id: x.id, label: x.label }))], f.poste)}
+      </div>
+      <div class="prof-grid">
+        ${list.length ? list.map((p) => {
+          const i = PROFILS_COMMUNAUTE.indexOf(p);
+          return `<article class="prof">
+            <header class="prof-head">
+              <span class="avatar" aria-hidden="true">${esc(initials(p.n))}</span>
+              <div><h3>${esc(p.n)}</h3><p>${[p.age ? p.age + ' ans' : null, p.pos].filter(Boolean).map(esc).join(' · ')}</p></div>
+              <span class="cat cat-${p.cat}">${CATS_PROFILS[p.cat]}</span>
+            </header>
+            <dl class="prof-facts">
+              <div><dt>Club</dt><dd>${esc(p.club)}</dd></div>
+              <div><dt>Prix indiqué</dt><dd>${esc(p.prix)}</dd></div>
+              ${p.cap ? `<div><dt>Niveau</dt><dd>${esc(p.cap)}</dd></div>` : ''}
+            </dl>
+            <p class="prof-note">${esc(p.note)}</p>
+            <p class="prof-src">Source : ${p.src.map((k) => `<a href="${esc(SRC[k].u)}" target="_blank" rel="noopener">${esc(SRC[k].t)}</a>`).join(' · ')}</p>
+            <div class="row">
+              <button type="button" class="btn small" data-fiche="${i}">Faire sa fiche</button>
+              <button type="button" class="btn small alt" data-add="${i}">Ajouter à ma liste</button>
+            </div>
+            <div class="ext-links">${linksHtml(p.n)}</div>
+          </article>`;
+        }).join('') : '<div class="textbox"><p class="muted">Aucun profil pour ce filtre. Essaie un autre poste ou un autre type de profil.</p></div>'}
+      </div>
+      <p class="muted">Sources consultées le 24 novembre 2026 : ${sources.map((k) => `<a href="${esc(SRC[k].u)}" target="_blank" rel="noopener">${esc(SRC[k].t)}</a>`).join(', ')}.</p>`;
+    bindChips(el, 'pcat', (v) => { f.cat = v; renderProfils(el); });
+    bindChips(el, 'pposte', (v) => { f.poste = v; renderProfils(el); });
+    $$('[data-fiche]', el).forEach((b) => b.addEventListener('click', () => {
+      const p = PROFILS_COMMUNAUTE[+b.dataset.fiche];
+      const poste = POSTES_RECRUT.find((x) => x.id === p.poste);
+      state.fj = { nom: p.n, age: p.age ? String(p.age) : '', club: p.club, poste: p.poste, style: Object.keys(poste.styles)[0], valeur: '', salaire: '', perso: 'Inconnue', pot: '', attrs: {} };
+      store.set('fjDraft', state.fj);
+      state.tabs.transferts = 'joueur';
+      renderTabs('transferts');
+      $('#convoBody').scrollTop = 0;
+      speak([`Fiche ouverte pour ${p.n}.`, "Recopie ses attributs depuis FM27 (ou sa page FMInside) et sa valeur depuis Transfermarkt : je te dis s'il colle à ton projet."]);
+    }));
+    $$('[data-add]', el).forEach((b) => b.addEventListener('click', () => {
+      const p = PROFILS_COMMUNAUTE[+b.dataset.add];
+      const ok = addToShortlist({ nom: p.n, poste: p.pos, age: p.age || '', valeur: '', note: `${p.club} · ${p.prix}` });
+      speak([ok ? `${p.n} est dans ta liste. Je lance un rapport complet dès que tu me le demandes dans le jeu.` : `${p.n} est déjà dans ta liste.`]);
+    }));
+  }
+
+  function scoreFiche(fj) {
+    const poste = POSTES_RECRUT.find((x) => x.id === fj.poste);
+    const st = poste.styles[fj.style] || poste.styles[Object.keys(poste.styles)[0]];
+    const rows = [...st.cles.map((a) => ({ a, key: true })), ...st.bonus.map((a) => ({ a, key: false }))]
+      .map((r) => ({ ...r, v: fj.attrs[r.a] === '' || fj.attrs[r.a] == null ? null : Math.max(1, Math.min(20, num(fj.attrs[r.a]))) }));
+    const filled = rows.filter((r) => r.v != null);
+    let fit = null, keyAvg = null;
+    if (filled.length) {
+      const w = filled.reduce((s, r) => s + (r.key ? 2 : 1), 0);
+      fit = Math.round((filled.reduce((s, r) => s + r.v * (r.key ? 2 : 1), 0) / (w * 20)) * 100);
+      const keys = filled.filter((r) => r.key);
+      keyAvg = keys.length ? keys.reduce((s, r) => s + r.v, 0) / keys.length : null;
+    }
+    return { poste, st, rows, fit, keyAvg };
+  }
+
+  function renderFicheJoueur(el) {
+    const fj = state.fj;
+    const p = state.profile;
+    const seuil = SEUILS[p.statut || 'milieu'];
+    const poste = POSTES_RECRUT.find((x) => x.id === fj.poste) || POSTES_RECRUT[0];
+    if (!poste.styles[fj.style]) fj.style = Object.keys(poste.styles)[0];
+    const sc = scoreFiche(fj);
+    const opt = (list, val) => list.map((o) => `<option value="${esc(o.id)}" ${o.id === val ? 'selected' : ''}>${esc(o.label)}</option>`).join('');
+    el.innerHTML = `
+      <form class="textbox" id="fjForm" autocomplete="off">
+        <h2>Fiche joueur</h2>
+        ${fj.ex ? '<p class="muted"><span class="ex-tag">exemple</span> Remplace ces valeurs par celles de ton joueur.</p>' : ''}
+        <p class="muted">Recopie les attributs depuis le profil du joueur dans FM27 (ou sa page FMInside), et sa valeur depuis Transfermarkt.</p>
+        <div class="form">
+          <div class="field"><label for="fj-nom">Nom</label><input id="fj-nom" name="nom" value="${esc(fj.nom)}"></div>
+          <div class="field"><label for="fj-age">Âge</label><input id="fj-age" name="age" inputmode="numeric" value="${esc(fj.age)}"></div>
+          <div class="field"><label for="fj-club">Club actuel</label><input id="fj-club" name="club" value="${esc(fj.club)}"></div>
+          <div class="field"><label for="fj-poste">Poste</label><select id="fj-poste" name="poste">${opt(POSTES_RECRUT.map((x) => ({ id: x.id, label: x.label })), fj.poste)}</select></div>
+          <div class="field"><label for="fj-style">Rôle visé</label><select id="fj-style" name="style">${opt(Object.entries(poste.styles).map(([id, v]) => ({ id, label: v.label })), fj.style)}</select></div>
+          <div class="field"><label for="fj-valeur">Valeur Transfermarkt (€)</label><input id="fj-valeur" name="valeur" inputmode="numeric" value="${esc(fj.valeur)}" placeholder="ex. 15000000"></div>
+          <div class="field"><label for="fj-salaire">Salaire demandé (€/semaine)</label><input id="fj-salaire" name="salaire" inputmode="numeric" value="${esc(fj.salaire)}"></div>
+          <div class="field"><label for="fj-pot">Potentiel (étoiles du recruteur)</label><select id="fj-pot" name="pot">${opt([{ id: '', label: 'Inconnu' }, ...[1, 2, 3, 4, 5].map((n) => ({ id: String(n), label: '★'.repeat(n) }))], fj.pot)}</select></div>
+          <div class="field"><label for="fj-perso">Personnalité</label><select id="fj-perso" name="perso">${opt(PERSONNALITES.map((x) => ({ id: x, label: x })), fj.perso)}</select></div>
+        </div>
+        <h3>Attributs (sur 20)</h3>
+        <div class="attr-grid">
+          ${sc.rows.map((r, i) => `<div class="field attr ${r.key ? 'is-key' : ''}"><label for="fj-a${i}">${esc(r.a)}${r.key ? ' <span class="req">indispensable</span>' : ''}</label><input id="fj-a${i}" data-attr="${esc(r.a)}" inputmode="numeric" maxlength="2" value="${r.v == null ? '' : r.v}" placeholder="1-20"></div>`).join('')}
+        </div>
+      </form>
+      <div id="fjCard"></div>
+      ${state.cards.length ? `<div class="textbox"><h2>Mes fiches enregistrées</h2><div class="saved">${state.cards.map((c, i) => {
+        const s = scoreFiche(c);
+        return `<span class="saved-item"><button type="button" class="saved-open" data-load="${i}"><b>${esc(c.nom)}</b> ${s.fit != null ? `<span>${s.fit}/100</span>` : ''}</button><button type="button" class="x" data-del="${i}" aria-label="Supprimer la fiche de ${esc(c.nom)}">✕</button></span>`;
+      }).join('')}</div></div>` : ''}`;
+
+    const drawCard = () => {
+      const s = scoreFiche(fj);
+      const age = num(fj.age), val = num(fj.valeur), sal = num(fj.salaire), bT = num(p.budget), bS = num(p.salaire);
+      let verdict, cls;
+      if (s.keyAvg == null) { verdict = 'Remplis au moins les attributs indispensables pour avoir mon avis.'; cls = 'blue'; }
+      else if (s.keyAvg >= seuil) { verdict = `Niveau titulaire pour l'${p.club || 'équipe'} à ce rôle.`; cls = 'green'; }
+      else if (age && age <= 21 && num(fj.pot) >= 4) { verdict = "Pari d'avenir : pas encore au niveau, mais gros potentiel. Prêt ou rotation pour le faire grandir."; cls = 'gold'; }
+      else if (s.keyAvg >= seuil - 2) { verdict = 'Joueur de rotation : utile, mais pas un titulaire pour ton objectif.'; cls = 'gold'; }
+      else { verdict = 'En dessous du niveau visé : cherche un autre profil.'; cls = 'red'; }
+      const forts = s.rows.filter((r) => r.v != null && r.v >= seuil + 2).sort((a, b) => b.v - a.v).slice(0, 3);
+      const faibles = s.rows.filter((r) => r.key && r.v != null && r.v < seuil);
+      const extra = [];
+      if (['Peu professionnel', 'Tempérament'].includes(fj.perso)) extra.push(`Personnalité « ${fj.perso} » : risque pour le vestiaire et la progression.`);
+      if (['Professionnel', 'Déterminé', 'Leader né'].includes(fj.perso)) extra.push(`Personnalité « ${fj.perso} » : un plus pour le vestiaire et sa progression.`);
+      if (val && bT) extra.push(`Sa valeur Transfermarkt représente ${Math.round((val / bT) * 100)} % de ton budget transferts${val > bT ? ' : hors budget, pense au prêt ou aux paiements échelonnés' : ''}.`);
+      if (sal && bS) extra.push(`Son salaire prend ${Math.round((sal / bS) * 100)} % de ta marge salariale.`);
+      if (age) extra.push(ageAdvice(age));
+      const pct = s.fit == null ? 0 : s.fit;
+      $('#fjCard').innerHTML = `
+        <article class="pcard">
+          <header class="pcard-head">
+            <span class="avatar big" aria-hidden="true">${esc(initials(fj.nom || '?'))}</span>
+            <div class="pcard-id">
+              <h2>${esc(fj.nom || 'Sans nom')}</h2>
+              <p>${[fj.age ? fj.age + ' ans' : null, fj.club, s.poste.label].filter(Boolean).map(esc).join(' · ')}</p>
+              <div class="stat"><span class="badge red">${esc(s.st.label)}</span>${fj.pot ? `<span class="badge gold">Potentiel ${'★'.repeat(+fj.pot)}</span>` : ''}${val ? `<span class="badge blue">Transfermarkt : ${money(val)}</span>` : ''}</div>
+            </div>
+            <div class="fit" style="--p:${pct}" role="img" aria-label="Adéquation au rôle : ${s.fit == null ? 'non calculée' : s.fit + ' sur 100'}">
+              <div><b>${s.fit == null ? '—' : s.fit}</b><span>/100</span></div>
+              <small>Adéquation au rôle</small>
+            </div>
+          </header>
+          <div class="pcard-body">
+            <div>
+              <p class="lbl">Attributs · repère ${seuil}/20 pour ton statut</p>
+              <div class="bars">
+                ${s.rows.map((r) => `<div class="bar-row ${r.v == null ? 'empty' : ''}" title="${esc(r.a)} : ${r.v == null ? 'non renseigné' : r.v + '/20'} (repère ${seuil})">
+                  <span class="bar-name">${r.key ? '<i class="key" aria-label="indispensable"></i>' : ''}${esc(r.a)}</span>
+                  <span class="bar-track"><span class="bar-fill" style="width:${r.v == null ? 0 : (r.v / 20) * 100}%"></span><span class="bar-tick" style="left:${(seuil / 20) * 100}%"></span></span>
+                  <span class="bar-val">${r.v == null ? '—' : r.v}${r.v != null && r.key && r.v < seuil ? ' <span class="low" aria-label="sous le repère">↓</span>' : ''}</span>
+                </div>`).join('')}
+              </div>
+              <p class="muted bars-legend"><i class="key"></i> attribut indispensable · <span class="tick-demo"></span> repère pour ton statut</p>
+            </div>
+            <div class="pcard-side">
+              <p><span class="badge ${cls}">Avis de Sami</span> ${esc(verdict)}</p>
+              ${forts.length ? `<h3>Points forts</h3><ul class="dots good">${forts.map((r) => `<li>${esc(r.a)} (${r.v})</li>`).join('')}</ul>` : ''}
+              ${faibles.length ? `<h3>À surveiller</h3><ul class="dots">${faibles.map((r) => `<li>${esc(r.a)} (${r.v}) sous le repère de ${seuil}</li>`).join('')}</ul>` : ''}
+              ${extra.length ? `<h3>Contrat et contexte</h3><ul class="dots">${extra.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}
+            </div>
+          </div>
+          <footer class="pcard-foot">
+            <div class="ext-links">${fj.nom && !fj.ex ? linksHtml(fj.nom) : ''}</div>
+            <div class="row"><button type="button" class="btn small" id="fjSave">Enregistrer la fiche</button><button type="button" class="btn small alt" id="fjList">Ajouter à ma liste</button></div>
+          </footer>
+        </article>`;
+      $('#fjSave').addEventListener('click', () => {
+        const copy = JSON.parse(JSON.stringify(fj)); delete copy.ex;
+        const i = state.cards.findIndex((c) => c.nom === copy.nom);
+        if (i >= 0) state.cards[i] = copy; else state.cards.unshift(copy);
+        store.set('cards', state.cards);
+        renderFicheJoueur(el);
+        speak([`Fiche de ${copy.nom} enregistrée. Tu la retrouves en bas de l'onglet.`]);
+      });
+      $('#fjList').addEventListener('click', () => {
+        const ok = addToShortlist({ nom: fj.nom, poste: s.st.label, age: fj.age, valeur: fj.valeur, note: fj.club });
+        speak([ok ? `${fj.nom} est dans ta liste de cibles.` : `${fj.nom} est déjà dans ta liste.`]);
+      });
+    };
+
+    const form = $('#fjForm', el);
+    form.addEventListener('submit', (e) => e.preventDefault());
+    form.addEventListener('input', (e) => {
+      const t = e.target;
+      if (fj.ex) delete fj.ex;
+      if (t.dataset.attr) fj.attrs[t.dataset.attr] = t.value.replace(/[^0-9]/g, '').slice(0, 2);
+      else if (t.name) fj[t.name] = t.value;
+      store.set('fjDraft', fj);
+      if (t.name === 'poste' || t.name === 'style') { if (t.name === 'poste') fj.style = Object.keys(POSTES_RECRUT.find((x) => x.id === fj.poste).styles)[0]; renderFicheJoueur(el); return; }
+      drawCard();
+    });
+    $$('[data-load]', el).forEach((b) => b.addEventListener('click', () => {
+      state.fj = JSON.parse(JSON.stringify(state.cards[+b.dataset.load]));
+      store.set('fjDraft', state.fj);
+      renderFicheJoueur(el);
+      $('#convoBody').scrollTop = 0;
+    }));
+    $$('[data-del]', el).forEach((b) => b.addEventListener('click', () => {
+      state.cards.splice(+b.dataset.del, 1);
+      store.set('cards', state.cards);
+      renderFicheJoueur(el);
+    }));
+    drawCard();
+  }
+
   function renderTransferts(el, tab) {
+    if (tab === 'profils') return renderProfils(el);
+    if (tab === 'joueur') return renderFicheJoueur(el);
     const p = state.profile || {};
     if (tab === 'fiche') {
       const r = state.recrut;

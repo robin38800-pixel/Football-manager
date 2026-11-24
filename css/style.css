@@ -365,6 +365,88 @@ details.acc .body > :last-child { margin-bottom: 0; }
 .note p { margin: 4px 0 0; white-space: pre-wrap; }
 .note-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 
+
+/* ---------------- Recrutement : profils proposés ---------------- */
+.prof-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; }
+.prof { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.prof-head { display: grid; grid-template-columns: 46px 1fr auto; gap: 12px; align-items: center; }
+.prof-head h3 { margin: 0; font-size: 18px; }
+.prof-head p { margin: 0; font-size: 14px; color: var(--ink-2); font-weight: 700; }
+.avatar {
+  width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; flex: none;
+  font-family: var(--f-title); font-weight: 600; color: #fff; font-size: 17px;
+  background: linear-gradient(135deg, var(--royal) 0 50%, var(--red) 50%); box-shadow: inset 0 0 0 3px #fff, 0 0 0 2px var(--navy);
+}
+.avatar.big { width: 72px; height: 72px; font-size: 26px; }
+.cat { font-size: 12px; font-weight: 800; padding: 3px 9px; border-radius: 999px; white-space: nowrap; align-self: start; }
+.cat-pepite { background: var(--gold-soft); color: #7a5300; }
+.cat-affaire { background: var(--blue-soft); color: var(--royal); }
+.cat-libre { background: var(--green-soft); color: #1d6b3a; }
+.prof-facts { margin: 0; display: grid; gap: 4px; font-size: 14.5px; }
+.prof-facts div { display: grid; grid-template-columns: 96px 1fr; gap: 8px; }
+.prof-facts dt { color: var(--ink-3); font-weight: 800; font-size: 12.5px; text-transform: uppercase; letter-spacing: .04em; padding-top: 2px; }
+.prof-facts dd { margin: 0; font-weight: 700; color: var(--ink); }
+.prof-note { margin: 0; font-size: 14.5px; }
+.prof-src { margin: 0; font-size: 12.5px; color: var(--ink-3); }
+.prof-src a, .muted a { color: var(--royal); font-weight: 700; }
+.ext-links { display: flex; flex-wrap: wrap; gap: 6px; }
+.ext { font-size: 12.5px; font-weight: 800; color: var(--navy); text-decoration: none; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 4px 9px; }
+.ext:hover { border-color: var(--royal); color: var(--royal); }
+
+/* ---------------- Recrutement : fiche joueur ---------------- */
+.attr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.attr input { text-align: center; font-weight: 800; font-variant-numeric: tabular-nums; }
+.attr.is-key input { border-color: #f3b3ba; background: #fff; }
+.req { font-size: 10.5px; font-weight: 800; color: var(--red); text-transform: uppercase; letter-spacing: .04em; margin-left: 4px; }
+.pcard { background: #fff; border-radius: 18px; overflow: hidden; box-shadow: 0 10px 30px rgba(15, 31, 74, .14); border: 1px solid var(--line); }
+.pcard-head {
+  display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: center; padding: 18px 20px;
+  background: radial-gradient(90% 140% at 100% 0%, var(--royal-2) 0%, transparent 60%), var(--navy);
+  color: #fff; border-bottom: 6px solid transparent;
+  border-image: linear-gradient(90deg, var(--royal) 0 33%, #fff 33% 66%, var(--red) 66%) 1;
+}
+.pcard-id { min-width: 0; }
+.pcard-id h2 { color: #fff; margin: 0 0 2px; font-size: 26px; }
+.pcard-id p { margin: 0 0 8px; color: #c9d4f0; font-weight: 700; font-size: 14.5px; }
+.pcard-head .badge.blue { background: rgba(255, 255, 255, .14); color: #fff; box-shadow: none; }
+.fit { display: grid; justify-items: center; gap: 4px; }
+.fit > div {
+  width: 96px; height: 96px; border-radius: 50%; display: grid; place-items: center; align-content: center;
+  background: radial-gradient(closest-side, var(--navy) 76%, transparent 77%), conic-gradient(#fff calc(var(--p) * 1%), rgba(255, 255, 255, .16) 0);
+}
+.fit b { font-family: var(--f-title); font-weight: 600; font-size: 32px; line-height: 1; font-variant-numeric: tabular-nums; }
+.fit span { font-size: 12px; color: #c9d4f0; font-weight: 800; }
+.fit small { font-size: 11.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: #c9d4f0; }
+.pcard-body { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 22px; padding: 20px; }
+.pcard-side h3 { margin-top: 14px; }
+.pcard-side > p:first-child { margin-bottom: 4px; }
+.pcard-foot { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center; padding: 14px 20px; background: var(--paper); border-top: 1px solid var(--line); }
+.bars { display: flex; flex-direction: column; gap: 9px; }
+.bar-row { display: grid; grid-template-columns: minmax(96px, 150px) 1fr 40px; gap: 10px; align-items: center; font-size: 14.5px; }
+.bar-name { font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 6px; min-width: 0; }
+.bar-track { position: relative; height: 12px; background: var(--paper); border-radius: 999px; box-shadow: inset 0 0 0 1px var(--line); }
+.bar-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--royal); border-radius: 999px; transition: width .35s ease; }
+.bar-tick { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--navy); border-radius: 1px; box-shadow: 0 0 0 2px #fff; }
+.bar-val { font-weight: 800; color: var(--navy); font-variant-numeric: tabular-nums; text-align: right; }
+.bar-row.empty .bar-name { color: var(--ink-3); }
+.low { color: var(--red); }
+i.key { width: 8px; height: 8px; background: var(--red); transform: rotate(45deg); display: inline-block; border-radius: 1px; flex: none; }
+.bars-legend { margin-top: 10px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.tick-demo { display: inline-block; width: 2px; height: 14px; background: var(--navy); margin: 0 2px 0 8px; vertical-align: -2px; }
+ul.dots.good li::before { background: var(--green); }
+.saved { display: flex; flex-wrap: wrap; gap: 8px; }
+.saved-item { display: inline-flex; align-items: center; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding-left: 4px; }
+.saved-open { border: none; background: none; padding: 6px 8px; font-weight: 700; color: var(--navy); }
+.saved-open span { color: var(--royal); font-weight: 800; margin-left: 4px; }
+@media (max-width: 700px) {
+  .pcard-head { grid-template-columns: auto 1fr; }
+  .fit { grid-column: 1 / -1; grid-template-columns: auto auto; justify-content: start; align-items: center; gap: 12px; }
+  .fit > div { width: 76px; height: 76px; }
+  .fit b { font-size: 26px; }
+  .pcard-body { grid-template-columns: 1fr; }
+  .pcard-id h2 { font-size: 21px; }
+}
+
 /* ---------------- Tablettes et téléphones ---------------- */
 @media (max-width: 900px) {
   .convo { grid-template-columns: 40% 1fr; grid-template-areas: "char speech" "body body"; grid-template-rows: auto 1fr; }

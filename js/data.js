@@ -526,3 +526,74 @@ const ASTUCES = [
   "Les recruteurs connaissent mieux certains pays : envoie-les là où ils ont de la connaissance.",
   "Ne regarde pas que la note du joueur : un attribut clé pour son rôle vaut mieux que dix attributs moyens.",
 ];
+
+/* ------------------------------------------------------------------ */
+/* Profils repérés par la communauté FM27 (recherches du 24/11/2026).
+   Les chiffres sont ceux publiés par chaque site, dans leur devise (€ ou £).
+   CA/PA = capacité actuelle / potentielle sur 200, selon la source.
+   À vérifier dans ta partie : prix et clubs changent selon la sauvegarde et les mises à jour. */
+
+const SRC = {
+  allthings: { t: 'allthings.how — Top 40 pépites FM27', u: 'https://allthings.how/fm27-best-wonderkids/' },
+  sortWk: { t: 'Sortitoutsi — Pépites FM27', u: 'https://sortitoutsi.net/best-football-manager-2027-wonderkids' },
+  sortBargain: { t: 'Sortitoutsi — Bonnes affaires FM27', u: 'https://sortitoutsi.net/football-manager-2027-bargain-players' },
+  sortFree: { t: 'Sortitoutsi — Joueurs libres FM27', u: 'https://sortitoutsi.net/football-manager-2027-free-players' },
+  gms: { t: 'GiveMeSport — Pépites FM27', u: 'https://www.givemesport.com/football-manager-27-wonderkids/' },
+  lwog: { t: 'Last Word on Gaming — Pépites pas chères', u: 'https://lastwordongaming.com/2026/11/23/fm27-best-bargain-wonderkids-guide/' },
+  p4fBargain: { t: 'Passion4FM — Bonnes affaires < 10 M€', u: 'https://www.passion4fm.com/football-manager-27-bargains/' },
+  p4fCheapWk: { t: 'Passion4FM — Pépites pas chères', u: 'https://www.passion4fm.com/fm27-best-cheap-wonderkids-bargains/' },
+  p4fForwards: { t: 'Passion4FM — Attaquants pépites < 3 M€', u: 'https://www.passion4fm.com/fm27-best-cheap-wonderkid-forwards-top-strikers-under-3m/' },
+  p4fFree: { t: 'Passion4FM — Meilleurs joueurs libres', u: 'http://www.passion4fm.com/football-manager-best-free-agents/' },
+  fmpBargain: { t: 'FMPortugal — Bonnes affaires FM27', u: 'https://fmportugal.net/en/pechinchas-fm27/' },
+  fmuFree: { t: 'FMultimate — 15 joueurs libres', u: 'https://fmultimate.com/fm27-best-free-agents/' },
+  htvgFree: { t: 'How To Video Game — Joueurs libres', u: 'https://howtovideogame.com/football-manager-27-best-free-agents/' },
+  lsFree: { t: 'LiveScore — Joueurs libres FM27', u: 'https://www.livescore.com/en/news/football/more/fm27-the-best-free-agents-to-sign-in-football-manager-2027-football-muse/' },
+};
+
+const PROFILS_COMMUNAUTE = [
+  // Pépites
+  { n: 'Lamine Yamal', age: 19, pos: 'Ailier droit', poste: 'ail', club: 'FC Barcelone', cat: 'pepite', prix: 'Hors de portée', cap: 'Plus gros potentiel des listes (195 dans l’une d’elles)', note: 'Le talent offensif numéro un de FM27. À suivre plutôt qu’à acheter.', src: ['gms'] },
+  { n: 'Pau Cubarsí', age: 19, pos: 'Défenseur central', poste: 'dc', club: 'FC Barcelone', cat: 'pepite', prix: 'Très cher', cap: 'CA 165 / PA 185', note: 'Le meilleur jeune défenseur du jeu, déjà au niveau.', src: ['allthings', 'sortWk'] },
+  { n: 'Yan Diomandé', age: 19, pos: 'Milieu offensif excentré', poste: 'ail', club: 'Real Madrid', cat: 'pepite', prix: 'Très cher', cap: 'CA 156 / PA 185', note: 'Côté gauche ou droit selon les sources.', src: ['allthings', 'sortWk'] },
+  { n: 'Ayyoub Bouaddi', age: 18, pos: 'Milieu central', poste: 'mc', club: 'À vérifier (Manchester City selon une liste)', cat: 'pepite', prix: 'Très cher', cap: 'PA 170 à 200', note: 'Ancien joueur de Lille dans FM26. Vérifie son club dans ta partie.', src: ['allthings'] },
+  { n: 'Max Dowman', age: 16, pos: 'Milieu offensif axial', poste: 'mo', club: 'Arsenal', cat: 'pepite', prix: 'Très cher', cap: 'PA 170 à 200', note: 'Le plus jeune du top 40, potentiel parmi les plus hauts.', src: ['allthings'] },
+  { n: 'Jorge Domínguez', age: 16, pos: 'Défenseur central', poste: 'dc', club: 'Atlético Madrid', cat: 'pepite', prix: '≈ 1,4 M£ · clause libératoire basse au début', cap: 'CA 100 / PA 166', note: 'À acheter très vite : sa clause est faible en début de partie.', src: ['gms', 'lwog'] },
+  { n: 'Holmes Júnior', age: 17, pos: 'Défenseur central', poste: 'dc', club: 'Girona', cat: 'pepite', prix: '≈ 2 M£', cap: '', note: 'Jeune défenseur central au fort potentiel, prix abordable.', src: ['gms'] },
+  { n: 'Polli', age: 16, pos: 'Milieu offensif gauche', poste: 'ail', club: 'Espanyol (ou Espanyol B)', cat: 'pepite', prix: '≈ 1 à 5 M€', cap: '', note: 'Pépite cachée citée par plusieurs listes.', src: ['p4fCheapWk'] },
+  { n: 'Justin Clarke', age: 17, pos: 'Ailier gauche / attaquant', poste: 'ail', club: 'Everton', cat: 'pepite', prix: '≈ 3,3 M€', cap: '', note: '17 ou 18 ans selon les sources.', src: ['fmpBargain'] },
+  { n: 'Tobiás Krejčí', age: 16, pos: 'Attaquant', poste: 'bu', club: 'Sparta Prague', cat: 'pepite', prix: '≈ 1,5 M€', cap: '', note: 'Attaquant pépite à moins de 3 M€.', src: ['p4fForwards'] },
+  // Bonnes affaires
+  { n: 'Marc Aguado', age: 26, pos: 'Milieu défensif / central', poste: 'mdc', club: 'Elche', cat: 'affaire', prix: '≈ 4 M€', cap: '', note: 'Milieu fiable pour presque rien.', src: ['p4fBargain'] },
+  { n: 'Pol Lozano', age: null, pos: 'Milieu central / défensif', poste: 'mc', club: 'Espanyol', cat: 'affaire', prix: '12 à 15 M€', cap: '', note: 'Un peu plus cher, mais titulaire immédiat.', src: ['p4fBargain'] },
+  { n: 'Brian Gutiérrez', age: null, pos: 'Milieu offensif / central', poste: 'mo', club: 'Chivas', cat: 'affaire', prix: '5 à 10 M€', cap: '', note: 'Créateur venu du Mexique.', src: ['p4fBargain'] },
+  { n: 'Riccardo Sottil', age: 27, pos: 'Ailier gauche', poste: 'ail', club: 'Fiorentina', cat: 'affaire', prix: '≈ 2,2 M€', cap: '', note: 'Ailier expérimenté à petit prix.', src: ['p4fBargain'] },
+  { n: 'Roberto Alvarado', age: 27, pos: 'Ailier gauche', poste: 'ail', club: 'Chivas', cat: 'affaire', prix: '≈ 8 M€', cap: '', note: 'Ailier international mexicain.', src: ['p4fBargain'] },
+  { n: 'Giorgos Koutsias', age: 22, pos: 'Attaquant', poste: 'bu', club: 'Famalicão', cat: 'affaire', prix: 'Non précisé', cap: '', note: 'Bonne affaire en attaque, surtout pour les clubs moyens.', src: ['p4fBargain'] },
+  { n: 'Danilo Cataldi', age: 31, pos: 'Milieu défensif', poste: 'mdc', club: 'Lazio', cat: 'affaire', prix: '≈ 5 M£', cap: '', note: 'Expérience et placement pour protéger la défense.', src: ['sortBargain'] },
+  { n: 'Alexis Claude-Maurice', age: 28, pos: 'Milieu offensif', poste: 'mo', club: 'Augsbourg', cat: 'affaire', prix: '≈ 8 M£', cap: '', note: 'Connaît la Ligue 1.', src: ['sortBargain'] },
+  { n: 'Stefan de Vrij', age: null, pos: 'Défenseur central', poste: 'dc', club: 'À vérifier', cat: 'affaire', prix: 'Entre 1 et 10 M£', cap: '', note: 'Vétéran solide pour encadrer une défense jeune.', src: ['sortBargain'] },
+  { n: 'Marcin Bułka', age: null, pos: 'Gardien', poste: 'gb', club: 'À vérifier', cat: 'affaire', prix: '≈ 5 M£', cap: '', note: 'Ancien gardien de Nice, bon rapport qualité-prix.', src: ['sortBargain'] },
+  // Joueurs libres
+  { n: 'Raphaël Guerreiro', age: 32, pos: 'Latéral gauche / milieu', poste: 'lat', club: 'Libre', cat: 'libre', prix: 'Gratuit (salaire seulement)', cap: 'Note 72/80 selon FMPortugal', note: 'Polyvalent et très technique. Parmi les meilleurs libres au départ.', src: ['fmpBargain', 'p4fFree'] },
+  { n: 'Francesco Acerbi', age: 38, pos: 'Défenseur central', poste: 'dc', club: 'Libre', cat: 'libre', prix: 'Gratuit (salaire seulement)', cap: '', note: 'Pour une saison, si tu n’as pas les moyens d’un défenseur cher.', src: ['fmuFree'] },
+  { n: 'Jadon Sancho', age: 26, pos: 'Ailier', poste: 'ail', club: 'Libre', cat: 'libre', prix: 'Gratuit (salaire seulement)', cap: '', note: 'Encore jeune : le libre le plus intéressant sur la durée.', src: ['htvgFree', 'lsFree'] },
+  { n: 'Riyad Mahrez', age: 35, pos: 'Ailier droit', poste: 'ail', club: 'Libre', cat: 'libre', prix: 'Gratuit (salaire seulement)', cap: '', note: 'Contrat court uniquement, vu son âge.', src: ['htvgFree', 'lsFree'] },
+  { n: 'Christian Eriksen', age: 34, pos: 'Milieu central', poste: 'mc', club: 'Libre', cat: 'libre', prix: 'Gratuit (salaire seulement)', cap: '', note: 'Passeur de grande classe, idéal comme tuteur.', src: ['htvgFree'] },
+  { n: 'Oleksandr Zinchenko', age: 29, pos: 'Latéral gauche / milieu', poste: 'lat', club: 'Libre', cat: 'libre', prix: 'Gratuit (salaire seulement)', cap: '', note: 'Parfait en latéral inversé.', src: ['htvgFree', 'lsFree'] },
+  { n: 'Anthony Martial', age: 30, pos: 'Attaquant / ailier', poste: 'bu', club: 'Libre', cat: 'libre', prix: 'Gratuit (salaire seulement)', cap: '', note: 'Ancien Lyonnais du centre de formation.', src: ['lsFree'] },
+  { n: 'Karim Benzema', age: 38, pos: 'Attaquant', poste: 'bu', club: 'Libre', cat: 'libre', prix: 'Gratuit (salaire seulement)', cap: '', note: 'Formé à l’OL. Une saison de plus pour finir à la maison ?', src: ['htvgFree'] },
+];
+
+const CATS_PROFILS = { pepite: 'Pépite', affaire: 'Bonne affaire', libre: 'Libre' };
+const PERSONNALITES = ['Inconnue', 'Professionnel', 'Déterminé', 'Ambitieux', 'Leader né', 'Équilibré', 'Peu professionnel', 'Tempérament'];
+
+/* Liens de recherche (s'ouvrent dans un nouvel onglet) */
+const LIENS_JOUEUR = (nom) => {
+  const q = encodeURIComponent(nom);
+  return [
+    { t: 'Transfermarkt', u: `https://www.transfermarkt.fr/schnellsuche/ergebnis/schnellsuche?query=${q}` },
+    { t: 'FMInside', u: `https://duckduckgo.com/?q=${encodeURIComponent('site:fminside.net ' + nom + ' FM27')}` },
+    { t: 'FM Scout', u: `https://duckduckgo.com/?q=${encodeURIComponent('site:fmscout.com ' + nom + ' FM27')}` },
+    { t: 'Sortitoutsi', u: `https://duckduckgo.com/?q=${encodeURIComponent('site:sortitoutsi.net ' + nom + ' FM27')}` },
+  ];
+};

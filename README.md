@@ -6,7 +6,7 @@ Un site qui joue le rôle de ton staff pour une carrière sur **Football Manager
 |---|---|---|
 | Margaux | Secrétaire générale | Fiche du club (statut, budget, style) et carnet de saison |
 | Bernard | Entraîneur adjoint | Assistant tactique, 5 systèmes avec formes en possession / hors possession, diagnostic, règles d'or |
-| Sami | Recruteur en chef | Fiche de poste (attributs à chercher), calculateur de coût d'un transfert, liste de cibles, conseils mercato |
+| Sami | Recruteur en chef | Profils proposés tirés des listes de la communauté FM27 (sources citées), fiche joueur notée selon le rôle et le budget, liens Transfermarkt / FMInside / FM Scout / Sortitoutsi, fiche de poste, calculateur de coût, liste de cibles, conseils mercato |
 | Inès | Préparatrice physique | Planning type de la semaine, entraînement individuel, jeunes, fatigue |
 | Théo | Analyste vidéo | Avant-match, ajustements en match, causeries |
 | Jacques | Mentor | Premiers pas (check-list), interface de FM27, nouveautés, glossaire, pièges |
