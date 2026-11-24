@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Staff de Poche FM27</title>
+  <meta name="claude:viewport-fit-sides" content="cover">
+  <meta name="description" content="Ton staff technique en pixel art pour bien démarrer ta carrière sur Football Manager 27 : tactiques, transferts, entraînement, matchs et guide du débutant.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&family=Press+Start+2P&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="console">
+    <div class="console-left">
+      <header class="brand">
+        <span class="brand-led" aria-hidden="true"></span>
+        <h1>Staff de Poche <small>FM27</small></h1>
+      </header>
+
+      <section class="screen screen-top" aria-label="Centre d'entraînement : approche un membre du staff pour lui parler">
+        <div class="room" id="room"></div>
+        <div class="hud" id="hud"></div>
+        <div class="toast" id="toast" hidden></div>
+      </section>
+
+      <div class="hinge">
+        <div class="dpad" aria-label="Croix directionnelle">
+          <button type="button" class="dp up" data-dir="up" aria-label="Haut">▲</button>
+          <button type="button" class="dp left" data-dir="left" aria-label="Gauche">◀</button>
+          <span class="dp mid" aria-hidden="true"></span>
+          <button type="button" class="dp right" data-dir="right" aria-label="Droite">▶</button>
+          <button type="button" class="dp down" data-dir="down" aria-label="Bas">▼</button>
+        </div>
+        <p class="hint">Flèches pour marcher<br>A pour parler · B pour revenir</p>
+        <div class="ab">
+          <button type="button" class="btn-b" id="btnB" aria-label="B : retour au menu">B</button>
+          <button type="button" class="btn-a" id="btnA" aria-label="A : parler">A</button>
+        </div>
+      </div>
+    </div>
+
+    <section class="screen screen-bottom" id="bottom" aria-live="polite"></section>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/sprites.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
